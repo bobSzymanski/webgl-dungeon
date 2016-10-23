@@ -1,0 +1,35 @@
+{
+  "name": "webgl-dungeon",
+  "version": "1.0.0",
+  "description": "A webGL dungeon crawler by Bob Szymanski.",
+  "main": "index.js",
+  "scripts": {
+    "test:unit": "mocha test/unit/*.js",
+    "test:integration": "cucumberjs tests/integration/features/*.feature"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bobSzymanski/webgl-dungeon.git"
+  },
+  "keywords": [
+    "webgl",
+    "rpg",
+    "dungeon"
+  ],
+  "author": "Bob Szymanski",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bobSzymanski/webgl-dungeon/issues"
+  },
+  "homepage": "https://github.com/bobSzymanski/webgl-dungeon#readme",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-as-promised": "^6.0.0",
+    "cucumber": "^1.3.1",
+    "mocha": "^3.1.2",
+    "protractor": "^4.0.9",
+    "protractor-cucumber-framework": "^0.6.0",
+    "superagent": "^2.3.0",
+    "superagent-as-promised": "^4.0.0"
+  }
+}
