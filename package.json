@@ -30,6 +30,7 @@
     "protractor": "^4.0.9",
     "protractor-cucumber-framework": "^0.6.0",
     "superagent": "^2.3.0",
-    "superagent-as-promised": "^4.0.0"
+    "superagent-as-promised": "^4.0.0",
+    "webpack-glsl-loader": "^1.0.1"
   }
 }

@@ -1,5 +1,4 @@
-var canvas;
-var gl;
+
 
 var cubeVerticesBuffer;
 var cubeVerticesTextureCoordBuffer;
@@ -18,84 +17,101 @@ var vertexNormalAttribute;
 var textureCoordAttribute;
 var perspectiveMatrix;
 
-//
-// start
-//
-// Called when the canvas is created to get the ball rolling.
-//
-function start() {
-  canvas = document.getElementById("glcanvas");
+//Instance Variables: 
+var _canvas;
+var _deltaTime = 0; //Used as a measure in changes in time between frames.
+var _then = 0; //A time reference needed by _deltaTime.
+var _gl;
+var _windowWidth = 0; //The canvas size is initialized in index.html !!!
+var _windowHeight = 0;
 
-  initWebGL(canvas);      // Initialize the GL context
+var _projectionMatrix = {};
+var _worldMatrix = {};
+var _viewMatrix = {};
+var _viewRotationMatrix = {};
+
+//Required dependencies
+var Constants = require("./constants.js");
+var VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
+var FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
+
+
+/**
+ * Entry point to our JS code. It is called at the very bottom of this script.
+ * @return N/A
+ */
+function Start() {
+
+  _canvas = document.getElementById("glcanvas");
   
-  // Only continue if WebGL is available and working
-  
-  if (gl) {
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
-    gl.clearDepth(1.0);                 // Clear everything
-    gl.enable(gl.DEPTH_TEST);           // Enable depth testing
-    gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
-    
-    // Initialize the shaders; this is where all the lighting for the
-    // vertices and so forth is established.
-    
+  _windowWidth = _canvas.width;
+  _windowHeight = _canvas.height;
+  initWebGL(_canvas);      // Initialize the GL context
+
+  if (_gl) {
+    var clearColor = Constants.COLOR_CORNFLOWER_BLUE;
+    _gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);  // Clear to black, fully opaque
+    _gl.clearDepth(1.0);                 // Clear everything
+    _gl.enable(_gl.DEPTH_TEST);           // Enable depth testing
+    _gl.depthFunc(_gl.LEQUAL);            // Near things obscure far things
+    _gl.enable(_gl.CULL_FACE); //These two lines enable culling, 
+    _gl.cullFace(_gl.BACK); //and we set the mode to BACK face culling.
+
+    LoadContent();
     initShaders();
-    
-    // Here's where we call the routine that builds all the objects
-    // we'll be drawing.
-    
     initBuffers();
     
-    // Next, load and set up the textures we'll be using.
-    
-    // TODO#2 Start
-    cubeTexture = createCubeTexture("Hello World!");
-    // TODO#2 End
-    
-    // Set up to draw the scene periodically.
-    
-    setInterval(drawScene, 15);
+
+    cubeTexture = createCubeTexture("Cool texture bro");
+    requestAnimationFrame(drawScene);
+
+  } else {
+    console.log(Constants.WEBGL_UNSUPPORTED_ERR);
   }
 }
 
-//
-// initWebGL
-//
-// Initialize WebGL, returning the GL context or null if
-// WebGL isn't available or could not be initialized.
-//
+/**
+ * Loads any content we need, called once after we have ensured webGL is working.
+ * @return N/A
+ */
+function LoadContent(){
+  //makePerspective => (FOV, Aspect Ratio, near Z index, far Z index);
+  _projectionMatrix = makePerspective(Constants.FIELD_OF_VIEW_ANGLE, _windowWidth / _windowHeight, Constants.NEAR_Z_INDEX, Constants.FAR_Z_INDEX);
+
+  return;
+}
+
+/**
+ * Initializes our _gl object. 
+ * @return N/A
+ */
 function initWebGL() {
-  gl = null;
+  _gl = null;
   
   try {
-    gl = canvas.getContext("experimental-webgl");
+    _gl = _canvas.getContext(Constants.WEBGL_CANVAS_CONTEXT);
+  } catch(e) {
+    console.log(Constants.WEBGL_CREATION_ERR);
   }
-  catch(e) {
-  }
-  
-  // If we don't have a GL context, give up now
-  
-  if (!gl) {
-    alert("Unable to initialize WebGL. Your browser may not support it.");
+
+  if (!_gl) {
+    alert(Constants.WEBGL_UNSUPPORTED_ERR);
   }
 }
 
-//
-// initBuffers
-//
-// Initialize the buffers we'll need. For this demo, we just have
-// one object -- a simple two-dimensional cube.
-//
+/**
+ * Initializes vertex, index, texture, and normal coordinate buffers.
+ * This function may be deprecated once the cube demo is completely removed.
+ * @return N/A
+ */
 function initBuffers() {
   
   // Create a buffer for the cube's vertices.
-  
-  cubeVerticesBuffer = gl.createBuffer();
+  cubeVerticesBuffer = _gl.createBuffer();
   
   // Select the cubeVerticesBuffer as the one to apply vertex
   // operations to from here out.
-  
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesBuffer);
   
   // Now create an array of vertices for the cube.
   
@@ -141,12 +157,12 @@ function initBuffers() {
   // do this by creating a Float32Array from the JavaScript array,
   // then use it to fill the current vertex buffer.
   
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(vertices), _gl.STATIC_DRAW);
 
   // Set up the normals for the vertices, so that we can compute lighting.
   
-  cubeVerticesNormalBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+  cubeVerticesNormalBuffer = _gl.createBuffer();
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
   
   var vertexNormals = [
     // Front
@@ -186,13 +202,13 @@ function initBuffers() {
     -1.0,  0.0,  0.0
   ];
   
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals),
-                gl.STATIC_DRAW);
+  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(vertexNormals),
+                _gl.STATIC_DRAW);
   
   // Map the texture onto the cube's faces.
   
-  cubeVerticesTextureCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
+  cubeVerticesTextureCoordBuffer = _gl.createBuffer();
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
   
   var textureCoordinates = [
     // Front
@@ -227,14 +243,14 @@ function initBuffers() {
     0.0,  1.0
   ];
 
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
-                gl.STATIC_DRAW);
+  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
+                _gl.STATIC_DRAW);
 
   // Build the element array buffer; this specifies the indices
   // into the vertex array for each face's vertices.
   
-  cubeVerticesIndexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
+  cubeVerticesIndexBuffer = _gl.createBuffer();
+  _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
   
   // This array defines each face as two triangles, using the
   // indices into the vertex array to specify each triangle's
@@ -251,8 +267,8 @@ function initBuffers() {
   
   // Now send the element array to GL
   
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+  _gl.bufferData(_gl.ELEMENT_ARRAY_BUFFER,
+      new Uint16Array(cubeVertexIndices), _gl.STATIC_DRAW);
 }
 
 //
@@ -288,46 +304,34 @@ function createCubeTexture(text) {
     ctx.restore();        
 
     // create new texture
-    var texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    var texture = _gl.createTexture();
+    _gl.bindTexture(_gl.TEXTURE_2D, texture);
+    _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.LINEAR);
+    _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, _gl.LINEAR_MIPMAP_NEAREST);
+    _gl.pixelStorei(_gl.UNPACK_FLIP_Y_WEBGL, true);
     handleTextureLoaded(cubeImage, texture) 
     
     return texture;
 }
-// TODO#1 End
  
 function handleTextureLoaded(image, texture) {
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-  gl.generateMipmap(gl.TEXTURE_2D);
-  gl.bindTexture(gl.TEXTURE_2D, null);
+  _gl.bindTexture(_gl.TEXTURE_2D, texture);
+  _gl.texImage2D(_gl.TEXTURE_2D, 0, _gl.RGBA, _gl.RGBA, _gl.UNSIGNED_BYTE, image);
+  _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.LINEAR);
+  _gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, _gl.LINEAR_MIPMAP_NEAREST);
+  _gl.generateMipmap(_gl.TEXTURE_2D);
+  _gl.bindTexture(_gl.TEXTURE_2D, null);
 }
 
-//
-// drawScene
-//
-// Draw the scene.
-//
-function drawScene() {
-  // Clear the canvas before we start drawing on it.
+function drawScene(now) {
+  now *= 0.001;
+  _deltaTime = now - _then;
+  _then = now;
 
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  
-  // Establish the perspective with which we want to view the
-  // scene. Our field of view is 45 degrees, with a width/height
-  // ratio of 640:480, and we only want to see objects between 0.1 units
-  // and 100 units away from the camera.
-  
-  perspectiveMatrix = makePerspective(45, 640.0/480.0, 0.1, 100.0);
+  _gl.clear(_gl.COLOR_BUFFER_BIT | _gl.DEPTH_BUFFER_BIT);
   
   // Set the drawing position to the "identity" point, which is
   // the center of the scene.
-  
   loadIdentity();
   
   // Now move the drawing position a bit to where we want to start
@@ -341,47 +345,40 @@ function drawScene() {
   mvRotate(cubeRotation, [1, 0, 1]);
   
   // Draw the cube by binding the array buffer to the cube's vertices
-  // array, setting attributes, and pushing it to GL.
+  // array, setting attributes, and pushing it to _gl.
   
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
-  gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesBuffer);
+  _gl.vertexAttribPointer(vertexPositionAttribute, 3, _gl.FLOAT, false, 0, 0);
   
   // Set the texture coordinates attribute for the vertices.
   
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
-  gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
+  _gl.vertexAttribPointer(textureCoordAttribute, 2, _gl.FLOAT, false, 0, 0);
   
   // Bind the normals buffer to the shader attribute.
   
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
-  gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 0, 0);
+  _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+  _gl.vertexAttribPointer(vertexNormalAttribute, 3, _gl.FLOAT, false, 0, 0);
   
   // Specify the texture to map onto the faces.
   
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
-  gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+  _gl.activeTexture(_gl.TEXTURE0);
+  _gl.bindTexture(_gl.TEXTURE_2D, cubeTexture);
+  _gl.uniform1i(_gl.getUniformLocation(shaderProgram, "uSampler"), 0);
   
   // Draw the cube.
   
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
+  _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
   setMatrixUniforms();
-  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+  _gl.drawElements(_gl.TRIANGLES, 36, _gl.UNSIGNED_SHORT, 0);
   
   // Restore the original matrix
-  
   mvPopMatrix();
   
-  // Update the rotation for the next draw, if it's time to do so.
-  
-  var currentTime = (new Date).getTime();
-  if (lastCubeUpdateTime) {
-    var delta = currentTime - lastCubeUpdateTime;
-    
-    cubeRotation += (30 * delta) / 1000.0;
-  }
-  
-  lastCubeUpdateTime = currentTime;
+  // Update the rotation for the next draw.
+  cubeRotation += (30 * _deltaTime); 
+
+  requestAnimationFrame(drawScene);
 }
 
 //
@@ -390,93 +387,43 @@ function drawScene() {
 // Initialize the shaders, so WebGL knows how to light our scene.
 //
 function initShaders() {
-  var fragmentShader = getShader(gl, "shader-fs");
-  var vertexShader = getShader(gl, "shader-vs");
+
+/// NEW CODE:
+  var vertexShader = _gl.createShader(_gl.VERTEX_SHADER);
+  _gl.shaderSource(vertexShader, VERTEX_SHADER_SOURCE);
+  _gl.compileShader(vertexShader);
+  var fragmentShader = _gl.createShader(_gl.FRAGMENT_SHADER);
+  _gl.shaderSource(fragmentShader, FRAGMENT_SHADER_SOURCE);
+  _gl.compileShader(fragmentShader);
+
+  //var fragmentShader = getShader(gl, "shader-fs");
+  //var vertexShader = getShader(gl, "shader-vs");
   
   // Create the shader program
   
-  shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
+  shaderProgram = _gl.createProgram();
+  _gl.attachShader(shaderProgram, vertexShader);
+  _gl.attachShader(shaderProgram, fragmentShader);
+  _gl.linkProgram(shaderProgram);
   
   // If creating the shader program failed, alert
   
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+  if (!_gl.getProgramParameter(shaderProgram, _gl.LINK_STATUS)) {
     alert("Unable to initialize the shader program.");
   }
   
-  gl.useProgram(shaderProgram);
+  _gl.useProgram(shaderProgram);
   
-  vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-  gl.enableVertexAttribArray(vertexPositionAttribute);
+  vertexPositionAttribute = _gl.getAttribLocation(shaderProgram, "aVertexPosition");
+  _gl.enableVertexAttribArray(vertexPositionAttribute);
   
-  textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-  gl.enableVertexAttribArray(textureCoordAttribute);
+  textureCoordAttribute = _gl.getAttribLocation(shaderProgram, "aTextureCoord");
+  _gl.enableVertexAttribArray(textureCoordAttribute);
   
-  vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
-  gl.enableVertexAttribArray(vertexNormalAttribute);
+  vertexNormalAttribute = _gl.getAttribLocation(shaderProgram, "aVertexNormal");
+  _gl.enableVertexAttribArray(vertexNormalAttribute);
 }
 
-//
-// getShader
-//
-// Loads a shader program by scouring the current document,
-// looking for a script with the specified ID.
-//
-function getShader(gl, id) {
-  var shaderScript = document.getElementById(id);
-  
-  // Didn't find an element with the specified ID; abort.
-  
-  if (!shaderScript) {
-    return null;
-  }
-  
-  // Walk through the source element's children, building the
-  // shader source string.
-  
-  var theSource = "";
-  var currentChild = shaderScript.firstChild;
-  
-  while(currentChild) {
-    if (currentChild.nodeType == 3) {
-      theSource += currentChild.textContent;
-    }
-    
-    currentChild = currentChild.nextSibling;
-  }
-  
-  // Now figure out what type of shader script we have,
-  // based on its MIME type.
-  
-  var shader;
-  
-  if (shaderScript.type == "x-shader/x-fragment") {
-    shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (shaderScript.type == "x-shader/x-vertex") {
-    shader = gl.createShader(gl.VERTEX_SHADER);
-  } else {
-    return null;  // Unknown shader type
-  }
-  
-  // Send the source to the shader object
-  
-  gl.shaderSource(shader, theSource);
-  
-  // Compile the shader program
-  
-  gl.compileShader(shader);
-  
-  // See if it compiled successfully
-  
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
-    return null;
-  }
-  
-  return shader;
-}
 
 //
 // Matrix utility functions
@@ -495,16 +442,16 @@ function mvTranslate(v) {
 }
 
 function setMatrixUniforms() {
-  var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-  gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
+  var pUniform = _gl.getUniformLocation(shaderProgram, "uPMatrix");
+  _gl.uniformMatrix4fv(pUniform, false, new Float32Array(_projectionMatrix.flatten()));
 
-  var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-  gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+  var mvUniform = _gl.getUniformLocation(shaderProgram, "uMVMatrix");
+  _gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
   
   var normalMatrix = mvMatrix.inverse();
   normalMatrix = normalMatrix.transpose();
-  var nUniform = gl.getUniformLocation(shaderProgram, "uNormalMatrix");
-  gl.uniformMatrix4fv(nUniform, false, new Float32Array(normalMatrix.flatten()));
+  var nUniform = _gl.getUniformLocation(shaderProgram, "uNormalMatrix");
+  _gl.uniformMatrix4fv(nUniform, false, new Float32Array(normalMatrix.flatten()));
 }
 
 var mvMatrixStack = [];
@@ -533,3 +480,8 @@ function mvRotate(angle, v) {
   var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
   multMatrix(m);
 }
+
+document.addEventListener("DOMContentLoaded", function(event) {
+  console.log("DOM fully loaded and parsed");
+  Start();
+});
