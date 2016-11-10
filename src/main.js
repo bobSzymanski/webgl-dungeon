@@ -10,7 +10,7 @@ var lastCubeUpdateTime = 0;
 var cubeImage;
 var cubeTexture;
 
-var mvMatrix;
+//var mvMatrix;
 var shaderProgram;
 var vertexPositionAttribute;
 var vertexNormalAttribute;
@@ -34,7 +34,7 @@ var _viewRotationMatrix = {};
 var Constants = require("./constants.js");
 var VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
 var FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
-
+var Camera = require("./camera.js");
 
 /**
  * Entry point to our JS code. It is called at the very bottom of this script.
@@ -63,12 +63,13 @@ function Start() {
     
 
     cubeTexture = createCubeTexture("Cool texture bro");
-    requestAnimationFrame(drawScene);
+    requestAnimationFrame(Update);
 
   } else {
     console.log(Constants.WEBGL_UNSUPPORTED_ERR);
   }
 }
+
 
 /**
  * Loads any content we need, called once after we have ensured webGL is working.
@@ -77,7 +78,7 @@ function Start() {
 function LoadContent(){
   //makePerspective => (FOV, Aspect Ratio, near Z index, far Z index);
   _projectionMatrix = makePerspective(Constants.FIELD_OF_VIEW_ANGLE, _windowWidth / _windowHeight, Constants.NEAR_Z_INDEX, Constants.FAR_Z_INDEX);
-
+  Camera.Initialize();
   return;
 }
 
@@ -323,26 +324,38 @@ function handleTextureLoaded(image, texture) {
   _gl.bindTexture(_gl.TEXTURE_2D, null);
 }
 
-function drawScene(now) {
+function Update(now) {
   now *= 0.001;
   _deltaTime = now - _then;
   _then = now;
 
+  //Update logic here.
+
+  //Then draw the frame
+  Draw();
+
+  //Rinse and repeat
+  requestAnimationFrame(Update);
+}
+
+function Draw(){
   _gl.clear(_gl.COLOR_BUFFER_BIT | _gl.DEPTH_BUFFER_BIT);
   
   // Set the drawing position to the "identity" point, which is
   // the center of the scene.
-  loadIdentity();
+  //loadIdentity();
   
   // Now move the drawing position a bit to where we want to start
   // drawing the cube.
   
-  mvTranslate([0.0, 0.0, -6.0]);
+  //mvTranslate([0.0, 0.0, -6.0]);
   
   // Save the current matrix, then rotate before we draw.
   
-  mvPushMatrix();
-  mvRotate(cubeRotation, [1, 0, 1]);
+  //mvPushMatrix();
+  //mvRotate(cubeRotation, [1, 0, 1]);
+
+  Camera.Rotate(cubeRotation, [1, 0, 0]);
   
   // Draw the cube by binding the array buffer to the cube's vertices
   // array, setting attributes, and pushing it to _gl.
@@ -373,12 +386,11 @@ function drawScene(now) {
   _gl.drawElements(_gl.TRIANGLES, 36, _gl.UNSIGNED_SHORT, 0);
   
   // Restore the original matrix
-  mvPopMatrix();
+  //mvPopMatrix();
   
   // Update the rotation for the next draw.
-  cubeRotation += (30 * _deltaTime); 
+  cubeRotation = (30 * _deltaTime); 
 
-  requestAnimationFrame(drawScene);
 }
 
 //
@@ -429,57 +441,57 @@ function initShaders() {
 // Matrix utility functions
 //
 
-function loadIdentity() {
-  mvMatrix = Matrix.I(4);
-}
+// function loadIdentity() {
+//   mvMatrix = Matrix.I(4);
+// }
 
-function multMatrix(m) {
-  mvMatrix = mvMatrix.x(m);
-}
+// function multMatrix(m) {
+//   mvMatrix = mvMatrix.x(m);
+// }
 
-function mvTranslate(v) {
-  multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
-}
+// function mvTranslate(v) {
+//   multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
+// }
 
 function setMatrixUniforms() {
   var pUniform = _gl.getUniformLocation(shaderProgram, "uPMatrix");
   _gl.uniformMatrix4fv(pUniform, false, new Float32Array(_projectionMatrix.flatten()));
 
   var mvUniform = _gl.getUniformLocation(shaderProgram, "uMVMatrix");
-  _gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+  _gl.uniformMatrix4fv(mvUniform, false, new Float32Array(Camera.GetViewMatrix().flatten()));
   
-  var normalMatrix = mvMatrix.inverse();
+  var normalMatrix = Camera.GetViewMatrix().inverse();
   normalMatrix = normalMatrix.transpose();
   var nUniform = _gl.getUniformLocation(shaderProgram, "uNormalMatrix");
   _gl.uniformMatrix4fv(nUniform, false, new Float32Array(normalMatrix.flatten()));
 }
 
-var mvMatrixStack = [];
+// var mvMatrixStack = [];
 
-function mvPushMatrix(m) {
-  if (m) {
-    mvMatrixStack.push(m.dup());
-    mvMatrix = m.dup();
-  } else {
-    mvMatrixStack.push(mvMatrix.dup());
-  }
-}
+// function mvPushMatrix(m) {
+//   if (m) {
+//     mvMatrixStack.push(m.dup());
+//     mvMatrix = m.dup();
+//   } else {
+//     mvMatrixStack.push(mvMatrix.dup());
+//   }
+// }
 
-function mvPopMatrix() {
-  if (!mvMatrixStack.length) {
-    throw("Can't pop from an empty matrix stack.");
-  }
+// function mvPopMatrix() {
+//   if (!mvMatrixStack.length) {
+//     throw("Can't pop from an empty matrix stack.");
+//   }
   
-  mvMatrix = mvMatrixStack.pop();
-  return mvMatrix;
-}
+//   mvMatrix = mvMatrixStack.pop();
+//   return mvMatrix;
+// }
 
-function mvRotate(angle, v) {
-  var inRadians = angle * Math.PI / 180.0;
+// function mvRotate(angle, v) {
+//   var inRadians = angle * Math.PI / 180.0;
   
-  var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
-  multMatrix(m);
-}
+//   var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
+//   multMatrix(m);
+// }
 
 document.addEventListener("DOMContentLoaded", function(event) {
   console.log("DOM fully loaded and parsed");
