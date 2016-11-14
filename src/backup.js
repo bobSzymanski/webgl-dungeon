@@ -28,16 +28,12 @@ var _worldMatrix = {};
 var _viewMatrix = {};
 var _viewRotationMatrix = {};
 var _pressedKeys = {};
-var indicesCount = 0;
-var cubeCopy = {};
 
 //Required dependencies
 var Constants = require("./constants.js");
 var VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
 var FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
-var cubeBaseModel = require("../models/basicCube.js");
 var Camera = require("./camera.js");
-var jQuery = require("jquery");
 
 /**
  * Entry point to our JS code. It is called at the very bottom of this script.
@@ -60,10 +56,10 @@ function Start() {
     _gl.enable(_gl.CULL_FACE); //These two lines enable culling, 
     _gl.cullFace(_gl.BACK); //and we set the mode to BACK face culling.
 
-    initBuffers();
     LoadContent();
     initShaders();
-    //initBuffers();
+    initBuffers();
+    
 
     //cubeTexture = createCubeTexture("Cool texture bro");
     requestAnimationFrame(Update);
@@ -107,33 +103,185 @@ function initWebGL() {
   }
 }
 
-
+/**
+ * Initializes vertex, index, texture, and normal coordinate buffers.
+ * This function may be deprecated once the cube demo is completely removed.
+ * @return N/A
+ */
 function initBuffers() {
-
-  cubeCopy = jQuery.extend(true, {}, cubeBaseModel)
-  //cubeCopy = Object.assign({}, cubeBaseModel);
-  console.log("Creating copy");
   
-  console.log("Assigned copy"); 
-  for (var i = 0; i < cubeCopy.vertices.length; i++){
-    cubeCopy.vertices[i] += 1;
-  }
-  console.log("cubeCopy: ");
-  console.log(cubeCopy);
 
-  console.log("Show original is unmodified:");
-  console.log(cubeBaseModel);
+  var letterModelVertices = [
+    //TOP FACES
+    0, 1, 0, 
+    1, 1, 0, 
+    1, 1, 5, 
+    0, 1, 5, 
+
+    1, 1, 4,
+    2, 1, 4,
+    2, 1, 5, 
+    1, 1, 5,
+
+    1, 1, 2,
+    2, 1, 2, 
+    2, 1, 3,
+    1, 1, 3
+  ];
+
+  // var letterModelIndices = [
+  //   0,  1,  2,      0,  2,  3,    // Main bar
+  //   4,  5,  6,      4,  6,  7,    // top spoke
+  //   8,  9,  10,     8,  10, 11    // bottom spoke
+  // ];
+
+  var letterModelIndices = [
+    0,  2,  1,      0,  3,  2,    // Main bar
+    4,  6,  5,      4,  7,  6,    // top spoke
+    8,  10,  9,     8,  11, 10    // bottom spoke
+  ];
+
+  var letterModelTexCoords = [
+    1, 5,
+    0, 5, 
+    0, 0, 
+    1, 0, 
+
+    1, 1,
+    0, 1, 
+    0, 0, 
+    1, 0, 
+
+    1, 1,
+    0, 1, 
+    0, 0, 
+    1, 0
+  ];
   
+  var vertices = [
+    // Front face
+    -1.0, -1.0,  1.0,
+     1.0, -1.0,  1.0,
+     1.0,  1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    
+    // Back face
+    -1.0, -1.0, -1.0,
+    -1.0,  1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0, -1.0, -1.0,
+    
+    // Top face
+    -1.0,  1.0, -1.0,
+    -1.0,  1.0,  1.0,
+     1.0,  1.0,  1.0,
+     1.0,  1.0, -1.0,
+    
+    // Bottom face
+    -1.0, -1.0, -1.0,
+     1.0, -1.0, -1.0,
+     1.0, -1.0,  1.0,
+    -1.0, -1.0,  1.0,
+    
+    // Right face
+     1.0, -1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0,  1.0,  1.0,
+     1.0, -1.0,  1.0,
+    
+    // Left face
+    -1.0, -1.0, -1.0,
+    -1.0, -1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    -1.0,  1.0, -1.0
+  ];
+  
+
+  
+  var textureCoordinates = [
+    // Front
+    // 0.0,  0.0,
+    // 1.0,  0.0,
+    // 1.0,  1.0,
+    // 0.0,  1.0,
+    0.0,  1.0,
+    1.0,  1.0,
+    1.0,  0.0,
+    0.0,  0.0,
+    
+    
+    // Back
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  1.0,
+    0.0,  1.0,
+    // Top
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  1.0,
+    0.0,  1.0,
+    // Bottom
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  1.0,
+    0.0,  1.0,
+    // Right
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  1.0,
+    0.0,  1.0,
+    // Left
+    0.0,  0.0,
+    1.0,  0.0,
+    1.0,  1.0,
+    0.0,  1.0
+  ];
+
+  
+
+  
+  var cubeVertexIndices = [
+    0,  1,  2,      0,  2,  3,    // front
+    4,  5,  6,      4,  6,  7,    // back
+    8,  9,  10,     8,  10, 11,   // top
+    12, 13, 14,     12, 14, 15,   // bottom
+    16, 17, 18,     16, 18, 19,   // right
+    20, 21, 22,     20, 22, 23    // left
+  ];
+
+
+  // cubeVerticesBuffer = _gl.createBuffer();
+  
+  // _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesBuffer);
+
+  // _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(vertices), _gl.STATIC_DRAW);
+
+  
+  // cubeVerticesTextureCoordBuffer = _gl.createBuffer();
+  // _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
+
+  // _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
+  //               _gl.STATIC_DRAW);
+
+
+  // cubeVerticesIndexBuffer = _gl.createBuffer();
+  // _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
+
+  // _gl.bufferData(_gl.ELEMENT_ARRAY_BUFFER,
+  //     new Uint16Array(cubeVertexIndices), _gl.STATIC_DRAW);
+
+
   cubeVerticesBuffer = _gl.createBuffer();
   
   _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesBuffer);
-  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(cubeCopy.vertices), _gl.STATIC_DRAW);
+
+  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(letterModelVertices), _gl.STATIC_DRAW);
 
   
   cubeVerticesTextureCoordBuffer = _gl.createBuffer();
   _gl.bindBuffer(_gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
 
-  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(cubeCopy.textureMap),
+  _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(letterModelTexCoords),
                 _gl.STATIC_DRAW);
 
 
@@ -141,13 +289,9 @@ function initBuffers() {
   _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
 
   _gl.bufferData(_gl.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array(cubeCopy.indices), _gl.STATIC_DRAW);
+      new Uint16Array(letterModelIndices), _gl.STATIC_DRAW);
 
-  indicesCount = cubeCopy.indices.length;
 
-  console.log("VERTS: " + cubeCopy.vertices.length);
-  console.log("INDS: " + cubeCopy.indices.length);
-  console.log("TEX COORDS: " + cubeCopy.textureMap.length);
 }
 
 
@@ -163,9 +307,16 @@ function initTextures() {
 
   //This is async... so let's wait for ALL textures to be completely loaded before drawing!
   cubeImage.onload = function() { handleTextureLoaded(cubeImage, cubeTexture); }
-  cubeImage.src = cubeCopy.textureSourceFile; //"textures/crate.png";
+  cubeImage.src = "textures/cubeTexture.png";
 
 }
+
+function LoadTexture(image, texture){
+  return new Promise(function(success, failure){
+
+  });
+}
+
 
 function handleTextureLoaded(image, texture, callback) {
   _gl.bindTexture(_gl.TEXTURE_2D, texture);
@@ -251,8 +402,7 @@ function Draw(){
   setMatrixUniforms();
  // _gl.drawElements(_gl.TRIANGLES, 36, _gl.UNSIGNED_SHORT, 0);
 
- //Number of INDICES.
- _gl.drawElements(_gl.TRIANGLES, indicesCount, _gl.UNSIGNED_SHORT, 0);
+ _gl.drawElements(_gl.TRIANGLES, 18, _gl.UNSIGNED_SHORT, 0);
 }
 
 //

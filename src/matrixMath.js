@@ -1,10 +1,8 @@
-//matrixMath.js
+// matrixMath.js
 
 module.exports = {
-	
-// Instance Variables
 
-	MultiplyMatrix: {},
-	_cameraPosition: {},
-
+	DegreesToRadians: function(deg){
+		return deg * Math.PI / 180.0;
+	}
 };

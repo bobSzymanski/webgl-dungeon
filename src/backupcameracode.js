@@ -25,7 +25,7 @@ var Camera = {
 	Initialize: function() {
 		this.cameraRotation = glMatrix.mat4.create();
 		this.viewMatrix = glMatrix.mat4.create();
-		this.cameraPosition = glMatrix.vec3.fromValues(-3, -3, 3);
+		this.cameraPosition = glMatrix.vec3.fromValues(-1, -1, -1);
 
 		this.upVector = glMatrix.vec3.fromValues(0, 0, 1);
 		this.targetVector = glMatrix.vec3.fromValues(0, 1, 0);
@@ -34,12 +34,12 @@ var Camera = {
 	UpdateCamera: function() {
 
 		this.cameraRotation = glMatrix.mat4.create();
-		var upDownRotationMatrix = glMatrix.mat4.create();
-		var leftRightRotationMatrix = glMatrix.mat4.create();
+		var xRotation = glMatrix.mat4.create();
+		var yRotation = glMatrix.mat4.create();
 
-		glMatrix.mat4.fromZRotation(leftRightRotationMatrix, this.leftRightRotation);
-		glMatrix.mat4.fromXRotation(upDownRotationMatrix, this.upDownRotation);
-		glMatrix.mat4.multiply(this.cameraRotation, leftRightRotationMatrix, upDownRotationMatrix);
+		glMatrix.mat4.fromYRotation(xRotation, this.leftRightRotation);
+		glMatrix.mat4.fromXRotation(yRotation, this.upDownRotation);
+		glMatrix.mat4.multiply(this.cameraRotation, xRotation, yRotation);
 
 		var rotatedTarget = glMatrix.vec3.create();
 		glMatrix.vec3.transformMat4(rotatedTarget, this.targetVector, this.cameraRotation);
@@ -63,56 +63,56 @@ var Camera = {
 	},
 
 	RotateUp: function(){
-		this.upDownRotation += this.defaultRotationAmount;
-	},
-
-	RotateDown: function(){
 		this.upDownRotation -= this.defaultRotationAmount;
 	},
 
+	RotateDown: function(){
+		this.upDownRotation += this.defaultRotationAmount;
+	},
+
 	RaiseCamera: function(){
-		this.cameraPosition[2] += this.defaultMovementIncrement;
+		this.cameraPosition[1] += this.defaultMovementIncrement;
 	},
 
 	LowerCamera: function(){
-		this.cameraPosition[2] -= this.defaultMovementIncrement;
+		this.cameraPosition[1] -= this.defaultMovementIncrement;
 	},
 
 	MoveForward: function(){
-		var baseVector = glMatrix.vec3.fromValues(0, 1, 0);
+		var baseVector = glMatrix.vec3.fromValues(0, 0, 1);
 		glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); //scale movement by the increment factor.
 		glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
 
 		//Since we only move in the X-Z plane, let's add components here individually ourselves.
 		this.cameraPosition[0] += baseVector[0];
-		this.cameraPosition[1] += baseVector[1];
+		this.cameraPosition[2] += baseVector[2];
 	},
 
 	MoveBackwards: function(){
-		var baseVector = glMatrix.vec3.fromValues(0, 1, 0);
+		var baseVector = glMatrix.vec3.fromValues(0, 0, 1);
 		glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); //scale movement by the increment factor.
 		glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
 
 		//Since we only move in the X-Z plane, let's add components here individually ourselves.
 		this.cameraPosition[0] -= baseVector[0];
-		this.cameraPosition[1] -= baseVector[1];
+		this.cameraPosition[2] -= baseVector[2];
 	},
 
 	StrafeLeft: function(){
-		var baseVector = glMatrix.vec3.fromValues(-1, 0, 0);
+		var baseVector = glMatrix.vec3.fromValues(1, 0, 0);
 		glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); //scale movement by the increment factor.
 		glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
 		
 		this.cameraPosition[0] += baseVector[0];
-		this.cameraPosition[1] += baseVector[1];
+		this.cameraPosition[2] += baseVector[2];
 	}, 
 
 	StrafeRight: function(){
-		var baseVector = glMatrix.vec3.fromValues(1, 0, 0);
+		var baseVector = glMatrix.vec3.fromValues(-1, 0, 0);
 		glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); //scale movement by the increment factor.
 		glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
 		this.cameraPosition[0] += baseVector[0];
-		this.cameraPosition[1] += baseVector[1];
+		this.cameraPosition[2] += baseVector[2];
 	},
 
 	GetViewMatrix: function() {
