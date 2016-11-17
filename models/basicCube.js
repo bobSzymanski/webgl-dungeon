@@ -56,5 +56,8 @@ module.exports = {
 		0, 1, 1, 1, 1, 0, 0, 0,
 		0, 1, 1, 1, 1, 0, 0, 0,
 	],
-
+	vertexBuffer: {},
+	indexBuffer: {},
+	textureCoordBuffer: {},
+	textureBinding: {},
 };

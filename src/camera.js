@@ -119,6 +119,10 @@ var Camera = {
 		return this.viewMatrix;
 	},
 
+	GetPositionString: function(){
+		return "X: " + this.cameraPosition[0].toFixed(3) + ", Y: " + this.cameraPosition[1].toFixed(3) + ", Z: " + this.cameraPosition[2].toFixed(3);
+	},
+
 };
 
 module.exports = Camera;
