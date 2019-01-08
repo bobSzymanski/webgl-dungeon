@@ -5,9 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack",
-    "start": "python -m SimpleHTTPServer 8080",
-    "test:unit": "mocha test/unit/*.js",
-    "test:integration": "cucumberjs tests/integration/features/*.feature"
+    "start": "python -m SimpleHTTPServer 8080"
   },
   "repository": {
     "type": "git",
@@ -25,15 +23,7 @@
   },
   "homepage": "https://github.com/bobSzymanski/webgl-dungeon#readme",
   "devDependencies": {
-    "chai": "^3.5.0",
-    "chai-as-promised": "^6.0.0",
-    "cucumber": "^1.3.1",
     "jquery": "^3.1.1",
-    "mocha": "^3.1.2",
-    "protractor": "^4.0.9",
-    "protractor-cucumber-framework": "^0.6.0",
-    "superagent": "^2.3.0",
-    "superagent-as-promised": "^4.0.0",
     "webpack": "^3.4.1",
     "webpack-glsl-loader": "^1.0.1"
   }
