@@ -12,6 +12,8 @@ module.exports = {
 	WEBGL_UNSUPPORTED_ERR: "There was some error in initializing WebGL for your browser. Please esure your browser is compatible.",
 	WEBGL_CREATION_ERR: "Error creating WebGL device!",
 	WEBGL_CANVAS_CONTEXT: "experimental-webgl",
+
+	// Default key bindings:
 	ASCII_W: 87,
 	ASCII_S: 83,
 	ASCII_A: 65,
@@ -22,6 +24,18 @@ module.exports = {
 	ASCII_RIGHT: 39,
 	ASCII_SPACE: 32,
 	ASCII_LSHIFT: 16,
-	
+
+	ROTATE_UP: "ROTATE_UP",
+	ROTATE_DOWN: "ROTATE_DOWN",
+	ROTATE_LEFT: "ROTATE_LEFT",
+	ROTATE_RIGHT: "ROTATE_RIGHT",
+
+	FORWARD: "FORWARD",
+	REVERSE: "REVERSE",
+	LEFT_STRAFE: "LEFT_STRAFE",
+	RIGHT_STRAFE: "RIGHT_STRAFE",
+
+	RAISE_CAM: "RAISE_CAM",
+	LOWER_CAM: "LOWER_CAM"
 
 };

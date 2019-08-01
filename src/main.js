@@ -1,5 +1,4 @@
 
-
 var cubeVerticesBuffer;
 var cubeVerticesTextureCoordBuffer;
 var cubeVerticesIndexBuffer;
@@ -27,15 +26,17 @@ var _worldMatrix = {};
 var _viewMatrix = {};
 var _viewRotationMatrix = {};
 var _pressedKeys = {};
+let _actions = [];
 
 
 //Required dependencies
-var Constants = require("./constants.js");
-var VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
-var FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
-var cubeBaseModel = require("../models/basicCube.js");
-var Camera = require("./camera.js");
-var jQuery = require("jquery");
+const Constants = require("./constants.js");
+const VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
+const FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
+const cubeBaseModel = require("../models/basicCube.js");
+const Camera = require("./camera.js");
+const jQuery = require("jquery");
+const keyBindings = require('./keybinds');
 
 
 var models = [];
@@ -51,7 +52,7 @@ function Start() {
   _canvas = document.getElementById("glcanvas");
 
   //This is how we can overlay some text.
-  var textElement = document.getElementById("overlayText1");
+  const textElement = document.getElementById("overlayText1");
   textNode = document.createTextNode("");
   textElement.appendChild(textNode);
 
@@ -180,7 +181,7 @@ function initBuffers() {
 
   console.log("VERTS: " + cubeCopy.vertices.length);
   console.log("INDS: " + cubeCopy.indices.length);
-  console.log("TEX COORDS: " + cubeCopy.textureMap.length);
+  // console.log("TEX COORDS: " + cubeCopy.textureMap.length);
 
   models.push(cubeCopy);
 
@@ -262,50 +263,13 @@ function handleTextureLoaded(image, texture, model, callback) {
   model.textureBinding = texture;
 }
 
-function Update(now) {
-  now *= 0.001;
-  _deltaTime = now - _then;
-  _then = now;
-
-  if (_pressedKeys[Constants.ASCII_UP]){
-    Camera.RotateUp();
-  }
-
-  if (_pressedKeys[Constants.ASCII_DOWN]){
-    Camera.RotateDown();
-  }
-
-  if (_pressedKeys[Constants.ASCII_LEFT]){
-    Camera.RotateLeft();
-  }
-
-  if (_pressedKeys[Constants.ASCII_RIGHT]){
-    Camera.RotateRight();
-  }
-
-  if (_pressedKeys[Constants.ASCII_W]){
-    Camera.MoveForward();
-  }
-
-  if (_pressedKeys[Constants.ASCII_S]){
-    Camera.MoveBackwards();
-  }
-
-  if (_pressedKeys[Constants.ASCII_A]){
-    Camera.StrafeLeft();
-  }
-  
-  if (_pressedKeys[Constants.ASCII_D]){
-    Camera.StrafeRight();
-  }
-
-  if (_pressedKeys[Constants.ASCII_SPACE]){
-    Camera.RaiseCamera();
-  }
-
-  if (_pressedKeys[Constants.ASCII_LSHIFT]){
-    Camera.LowerCamera();
-  }
+function Update() {
+  Object.keys(_pressedKeys).forEach((button) => {
+    if (_pressedKeys[button]) { // If the button was pressed...
+      let action = keyBindings.getKeyBinding(button); // Get what action it does
+      Camera.Action(action); // For now, just immediately pass commands to the camera.
+    }
+  })
 
   //Then draw the frame
   Camera.UpdateCamera();
@@ -361,6 +325,6 @@ function handleKeyUp(event){
 }
 
 document.addEventListener("DOMContentLoaded", function(event) {
-  console.log("DOM fully loaded and parsed");
+  console.log("DOM fully loaded and parsed. Application starting...");
   Start();
 });

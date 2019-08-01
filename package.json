@@ -4,7 +4,7 @@
   "description": "A webGL dungeon crawler by Bob Szymanski.",
   "main": "index.js",
   "scripts": {
-    "build": "webpack",
+    "build": "rm -rf ./bin && webpack",
     "start": "python -m SimpleHTTPServer 8080"
   },
   "repository": {
