@@ -1,7 +1,7 @@
 // Basic Cube
 
 module.exports = {
-
+	name: "woodCrate",
 	textureSourceFile: "textures/crate.png",
 	vertices: [
 		//Front face

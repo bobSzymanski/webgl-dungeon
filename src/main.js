@@ -1,35 +1,6 @@
+import log from './logger';
 
-var cubeVerticesBuffer;
-var cubeVerticesTextureCoordBuffer;
-var cubeVerticesIndexBuffer;
-var cubeVerticesIndexBuffer;
-
-var cubeTexture;
-
-//var mvMatrix;
-var shaderProgram;
-var vertexPositionAttribute;
-var vertexNormalAttribute;
-var textureCoordAttribute;
-var perspectiveMatrix;
-
-//Instance Variables: 
-var _canvas;
-var _deltaTime = 0; //Used as a measure in changes in time between frames.
-var _then = 0; //A time reference needed by _deltaTime.
-var _gl;
-var _windowWidth = 0; //The canvas size is initialized in index.html !!!
-var _windowHeight = 0;
-
-var _projectionMatrix = {};
-var _worldMatrix = {};
-var _viewMatrix = {};
-var _viewRotationMatrix = {};
-var _pressedKeys = {};
-let _actions = [];
-
-
-//Required dependencies
+// TODO: consolidate between import & require pls
 const Constants = require("./constants.js");
 const VERTEX_SHADER_SOURCE = require("./shaders/vertexShader.glsl");
 const FRAGMENT_SHADER_SOURCE = require("./shaders/fragmentShader.glsl");
@@ -38,48 +9,75 @@ const Camera = require("./camera.js");
 const jQuery = require("jquery");
 const keyBindings = require('./keybinds');
 
+let cubeVerticesBuffer;
+let cubeVerticesTextureCoordBuffer;
+let cubeVerticesIndexBuffer;
 
-var models = [];
+let cubeTexture;
 
-var textNode;
+let shaderProgram;
+let vertexPositionAttribute;
+let vertexNormalAttribute;
+let textureCoordAttribute;
+let perspectiveMatrix;
+
+//Instance Variables: 
+let _canvas;
+let _deltaTime = 0; //Used as a measure in changes in time between frames.
+let _then = 0; //A time reference needed by _deltaTime.
+let _gl;
+let _windowWidth = 0; //The canvas size is initialized in index.html !!!
+let _windowHeight = 0;
+
+let _projectionMatrix = {};
+let _worldMatrix = {};
+let _viewMatrix = {};
+let _viewRotationMatrix = {};
+let _pressedKeys = {};
+let _actions = [];
+
+
+let models = [];
+
+let textNode;
 
 /**
  * Entry point to our JS code. It is called at the very bottom of this script.
- * @return N/A
+ * @return Promise (async)
  */
-function Start() {
+async function Start() {
 
   _canvas = document.getElementById("glcanvas");
 
-  //This is how we can overlay some text.
+  // This is how we can overlay some text.
   const textElement = document.getElementById("overlayText1");
   textNode = document.createTextNode("");
   textElement.appendChild(textNode);
-
 
   _windowWidth = _canvas.width;
   _windowHeight = _canvas.height;
   initWebGL(_canvas);      // Initialize the GL context
 
-  if (_gl) {
-    var clearColor = Constants.COLOR_CORNFLOWER_BLUE;
-    _gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);  // Clear to black, fully opaque
-    _gl.clearDepth(1.0);                 // Clear everything
-    _gl.enable(_gl.DEPTH_TEST);           // Enable depth testing
-    _gl.depthFunc(_gl.LEQUAL);            // Near things obscure far things
-    _gl.enable(_gl.CULL_FACE); //These two lines enable culling, 
-    _gl.cullFace(_gl.BACK); //and we set the mode to BACK face culling.
-
-    initBuffers();
-    LoadContent();
-    initShaders();
-
-
-    requestAnimationFrame(Update);
-
-  } else {
-    console.log(Constants.WEBGL_UNSUPPORTED_ERR);
+  if (!_gl) {
+    log(Constants.WEBGL_UNSUPPORTED_ERR);
+    return;
   }
+
+  let clearColor = Constants.COLOR_CORNFLOWER_BLUE;
+  _gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);  // Clear to black, fully opaque
+  _gl.clearDepth(1.0);                  // Clear everything
+  _gl.enable(_gl.DEPTH_TEST);           // Enable depth testing
+  _gl.depthFunc(_gl.LEQUAL);            // Near things obscure far things
+  _gl.enable(_gl.CULL_FACE); //These two lines enable culling, 
+  _gl.cullFace(_gl.BACK); //and we set the mode to BACK face culling.
+
+  initBuffers(); // For now, this creates our first cube.
+  await LoadContent(); // Loads textures, etc. uses async/await.
+  initShaders();
+
+  makeCubes();
+
+  requestAnimationFrame(Update);
 }
 
 
@@ -87,15 +85,20 @@ function Start() {
  * Loads any content we need, called once after we have ensured webGL is working.
  * @return N/A
  */
-function LoadContent(){
-  //makePerspective => (FOV, Aspect Ratio, near Z index, far Z index);
-  _projectionMatrix = makePerspective(Constants.FIELD_OF_VIEW_ANGLE, _windowWidth / _windowHeight, Constants.NEAR_Z_INDEX, Constants.FAR_Z_INDEX);
+async function LoadContent() {
+  
+  // makePerspective => (FOV, Aspect Ratio, near Z index, far Z index);
+  _projectionMatrix = makePerspective(Constants.FIELD_OF_VIEW_ANGLE,
+    _windowWidth / _windowHeight,
+    Constants.NEAR_Z_INDEX,
+    Constants.FAR_Z_INDEX);
+
   Camera.Initialize();
-  initTextures();
 
   document.onkeydown = handleKeyDown;
   document.onkeyup = handleKeyUp;
-  return;
+
+  await loadTextureForModel(models[0]);
 }
 
 /**
@@ -108,7 +111,7 @@ function initWebGL() {
   try {
     _gl = _canvas.getContext(Constants.WEBGL_CANVAS_CONTEXT);
   } catch(e) {
-    console.log(Constants.WEBGL_CREATION_ERR);
+    log(Constants.WEBGL_CREATION_ERR);
   }
 
   if (!_gl) {
@@ -117,16 +120,14 @@ function initWebGL() {
 }
 
 /**
-* initShaders initializes our GLSL, compiles it from source,, and attaches it.
+* initShaders initializes our GLSL, compiles it from source, and attaches it.
 * @return: N/A 
 */
 function initShaders() {
-
-/// NEW CODE:
-  var vertexShader = _gl.createShader(_gl.VERTEX_SHADER);
+  let vertexShader = _gl.createShader(_gl.VERTEX_SHADER);
   _gl.shaderSource(vertexShader, VERTEX_SHADER_SOURCE);
   _gl.compileShader(vertexShader);
-  var fragmentShader = _gl.createShader(_gl.FRAGMENT_SHADER);
+  let fragmentShader = _gl.createShader(_gl.FRAGMENT_SHADER);
   _gl.shaderSource(fragmentShader, FRAGMENT_SHADER_SOURCE);
   _gl.compileShader(fragmentShader);
 
@@ -138,7 +139,7 @@ function initShaders() {
   
   // If creating the shader program failed, alert
   if (!_gl.getProgramParameter(shaderProgram, _gl.LINK_STATUS)) {
-    alert("Unable to initialize the shader program.");
+    throw new Error('Unable to initialize the shader program!');
   }
   
   _gl.useProgram(shaderProgram);
@@ -148,16 +149,15 @@ function initShaders() {
   
   textureCoordAttribute = _gl.getAttribLocation(shaderProgram, "aTextureCoord");
   _gl.enableVertexAttribArray(textureCoordAttribute);
-  return;
 }
 
 
 function initBuffers() {
-  var cubeCopy = {};
+  let cubeCopy = {};
   cubeCopy = jQuery.extend(true, {}, cubeBaseModel)
 
   //Now we translate the cube copy over by 1 coordinate in each direction.
-  for (var i = 0; i < cubeCopy.vertices.length; i++){
+  for (let i = 0; i < cubeCopy.vertices.length; i++) {
     cubeCopy.vertices[i] += 1;
   }
   
@@ -178,55 +178,38 @@ function initBuffers() {
   _gl.bufferData(_gl.ELEMENT_ARRAY_BUFFER,
       new Uint16Array(cubeCopy.indices), _gl.STATIC_DRAW);
 
-
-  console.log("VERTS: " + cubeCopy.vertices.length);
-  console.log("INDS: " + cubeCopy.indices.length);
-  // console.log("TEX COORDS: " + cubeCopy.textureMap.length);
-
   models.push(cubeCopy);
-
-
+}
+ 
+async function loadTextureForModel(model) {
+  return new Promise((success, failure) => {
+    model.textureBinding = _gl.createTexture();
+    const img = new Image();
+    img.onload = function() { // Always define onload func first, then set src property.
+      handleTextureLoaded(img, model.textureBinding, model); 
+      return success();
+    }
+    img.onerror = function() {
+      log(`Error loading texture: ${img.src}`);
+      return failure();
+    }
+    img.src = model.textureSourceFile;
+  });
 }
 
-
-function initTextures() {
-  /*   IMPORTANT!!!
-      Loading textures this way will NOT work if we just double click on index.html
-      We need to run the simpleHttpServer to host the textures and then they will load.
-      Alternatively, it MAY work in firefox. Untested.
-  */ 
-
-  /*  NOTE
-   * Eventually this might be good to do for all models, 
-   * but for now I am just using 1 texture, so there's no iteration over models.
-   * We'd also need to account for loading the same texture multiple times..
-   */ 
-  models[0].textureBinding = _gl.createTexture();
-  var img = new Image();
-  
-
-  //This is async... so let's wait for ALL textures to be completely loaded before drawing!
-  img.onload = function() { handleTextureLoaded(img, models[0].textureBinding, models[0]); }
-  img.src = models[0].textureSourceFile; //"textures/crate.png";
-
-
-//Now that the texture is loaded, let's make 100 of the same cube using that texture.
-//To test how our perf goes! I had this as high as 100x100, but that seems to strain us too much.
-//50x50 was very smooth. Takes a bit of time to load though :P
-//I don't imagine any dungeons would go above 20x20, and we can decrease the far Z plane if there's too many verts.
-
-  for (var y = 1; y < 11; y++){ // We already draw a cube at index 0, so just start with a translation of 1.
-    for (var i = 1; i < 11; i++){ //Therefore, looping 1 -> 11 makes  10 rows of cubes.
-      var toAdd = {};
+function makeCubes() {
+  for (let y = 1; y < 11; y++) { // We already draw a cube at index 0, so just start with a translation of 1.
+    for (let i = 1; i < 11; i++) { //Therefore, looping 1 -> 11 makes  10 rows of cubes.
+      let toAdd = {};
       toAdd = jQuery.extend(true, {}, models[0]);
 
       //Every THIRD item in the array will correspond to the same coordinate of the next vertex.
       //ie. [0] = vertex1.x, [1] = vertex1.y, [2] = vertex1.z, [3] = vertex2.x, [4] = vertex2.y, etc.
-      for (var j = 0; j < models[0].vertices.length; j+=3){ //Shift cubes in the X direction
+      for (let j = 0; j < models[0].vertices.length; j+=3) { //Shift cubes in the X direction
         toAdd.vertices[j] += i; 
       }
 
-      for (var j = 1; j < models[0].vertices.length; j+=3){ //Shift cubes in the Y direction
+      for (let j = 1; j < models[0].vertices.length; j+=3) { //Shift cubes in the Y direction
         toAdd.vertices[j] += y;
       }
 
@@ -283,7 +266,7 @@ function Update() {
 function Draw(){
   _gl.clear(_gl.COLOR_BUFFER_BIT | _gl.DEPTH_BUFFER_BIT);
 
-  for (var i = 0; i < models.length; i++){
+  for (let i = 0; i < models.length; i++){
     //Bind the vertex, index, and texture coordinate data
     _gl.bindBuffer(_gl.ARRAY_BUFFER, models[i].vertexBuffer);
     _gl.vertexAttribPointer(vertexPositionAttribute, 3, _gl.FLOAT, false, 0, 0);
@@ -293,7 +276,6 @@ function Draw(){
     setMatrixUniforms();
 
     //Bind the current texture data
-    
     _gl.activeTexture(_gl.TEXTURE0);
     _gl.bindTexture(_gl.TEXTURE_2D, models[i].textureBinding);
     _gl.uniform1i(_gl.getUniformLocation(shaderProgram, "uSampler"), 0);
@@ -306,18 +288,16 @@ function Draw(){
 
 
 function setMatrixUniforms() {
-  var pUniform = _gl.getUniformLocation(shaderProgram, "uPMatrix");
+  let pUniform = _gl.getUniformLocation(shaderProgram, "uPMatrix");
   _gl.uniformMatrix4fv(pUniform, false, new Float32Array(_projectionMatrix.flatten()));
 
 
-  var mvUniform = _gl.getUniformLocation(shaderProgram, "uMVMatrix");
+  let mvUniform = _gl.getUniformLocation(shaderProgram, "uMVMatrix");
   _gl.uniformMatrix4fv(mvUniform, false, new Float32Array(Camera.GetViewMatrix()));
-
 }
 
 function handleKeyDown(event){
   _pressedKeys[event.keyCode] = true;
-  //console.log("Key: " + event.keyCode + " was pressed!!!");
 }
 
 function handleKeyUp(event){
@@ -325,6 +305,6 @@ function handleKeyUp(event){
 }
 
 document.addEventListener("DOMContentLoaded", function(event) {
-  console.log("DOM fully loaded and parsed. Application starting...");
+  log("DOM fully loaded and parsed. Application starting...");
   Start();
 });
