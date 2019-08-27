@@ -1,15 +1,26 @@
 # webgl-dungeon
 
-### What is this I just found it here
-- I am working on a 3D dungeon crawler that uses WebGL to draw simple mazes where you battle monsters and stuff.
+### How to
+- `npm run build`
+- `npm run start`
+- navigate to `localhost:8080`
 
-- I started working on this in early November 2016 while I was on vacation and I knew I wanted to port my dungeon crawler code from C++ / DirectX over to webGL because javascript is pretty cool and the web is a pretty interesting platform.
+Current default controls are WASD + Arrow keys.
+Press Space to raise the camera.
+Press Left Shift to lower the camera.
+
+
+### What is this I just found it here
+- I am [VERY SLOWLY] working on a 3D dungeon crawler that uses WebGL to draw simple mazes where you battle monsters and stuff.
+
+- I started working on this in early November 2016 while I was on vacation and I knew I wanted to port my dungeon crawler code from C++ / DirectX over to webGL because javascript is pretty cool and the web is a pretty interesting platform. I tend to pick this up every couple of months when I think it could use some new features or cleaning up. It should be suitable for a very barebones webGL demo.
 
 ## Codebase
 - Javascript, using node a lot
 - Webpack is used to build
 - WebGL works in newer and decent modern browsers like chrome and firefox. Edge maybe in the future.
 - I started using the example [here](http://www.sw-engineering-candies.com/snippets/webgl/hello-world) but there was a ton I needed to change to even get started. Maybe I'll just fork off my code once the tutorial is completely redone, so that people can use it to start, but I think giving the project as a whole might end up being a bit more useful :P
+- This started out really crappy but is getting better.
 
 
 ## Disclaimer??
