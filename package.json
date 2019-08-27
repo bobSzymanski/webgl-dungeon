@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "rm -rf ./bin && webpack",
-    "start": "python -m SimpleHTTPServer 8080"
+    "start": "python -m SimpleHTTPServer 8080",
+    "lint": "./node_modules/.bin/eslint --ext .js --env node src",
+    "lint:fix": "./node_modules/.bin/eslint --ext .js --fix --env node src"
   },
   "repository": {
     "type": "git",
@@ -23,7 +25,12 @@
   },
   "homepage": "https://github.com/bobSzymanski/webgl-dungeon#readme",
   "devDependencies": {
-    "jquery": "^3.1.1",
+    "eslint": "^6.2.2",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.14.3",
+    "jquery": "^3.4.1",
     "webpack": "^3.4.1",
     "webpack-glsl-loader": "^1.0.1"
   }

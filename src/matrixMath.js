@@ -2,7 +2,7 @@
 
 module.exports = {
 
-	DegreesToRadians: function(deg){
-		return deg * Math.PI / 180.0;
-	}
+  DegreesToRadians(deg) {
+    return deg * Math.PI / 180.0; // eslint-disable-line
+  }
 };

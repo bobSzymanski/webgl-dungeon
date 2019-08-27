@@ -1,0 +1,29 @@
+{
+  "extends": "airbnb",
+  "env": {
+    "mocha": true,
+    "es6": true,
+    "node": true,
+    "browser": true
+  },
+  "rules": {
+    "comma-dangle": ["error", "only-multiline"],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "arrow-body-style": "off",
+    "new-cap": "off",
+    "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
+    "import/no-named-as-default-member": "off",
+    "max-len": ["error", { "code": 100, "ignoreComments": true, "ignoreTrailingComments": true }],
+    "complexity": ["error", 4],
+    'no-plusplus': [2, { allowForLoopAfterthoughts: true }]
+  },
+  "parserOptions": {
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true
+    }
+  },
+  "globals": {
+    "jest": true,
+    "expect": true
+  }
+}
