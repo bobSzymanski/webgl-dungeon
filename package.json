@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "rm -rf ./bin && webpack",
+    "build:windows": "IF EXIST ./bin ( rmdir /Q /S \"./bin\") && webpack",
     "start": "python -m SimpleHTTPServer 8080",
+    "start:python3": "python -m http.server 8080",
     "lint": "./node_modules/.bin/eslint --ext .js --env node src",
     "lint:fix": "./node_modules/.bin/eslint --ext .js --fix --env node src"
   },
