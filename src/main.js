@@ -3,27 +3,183 @@ import log from './logger';
 // TODO: consolidate between import & require pls
 const jQuery = require('jquery');
 const Constants = require('./constants.js');
+const glMatrix = require('./extern/gl-matrix.js');
 const VERTEX_SHADER_SOURCE = require('./shaders/vertexShader.glsl');
 const FRAGMENT_SHADER_SOURCE = require('./shaders/fragmentShader.glsl');
 const cubeBaseModel = require('../models/basicCube.js');
 const Camera = require('./camera.js');
 const keyBindings = require('./keybinds');
 
+const default_FOV = 70;
+const default_near_Z = 0.1;
+const default_far_z = 100;
+const aspect_ratio = 800 / 600;
+const default_width = 800;
+const default_height = 600;
+
+let requestId;
 let shaderProgram;
 let vertexPositionAttribute;
 let textureCoordAttribute;
+let gl_ex;
 
 // Instance Variables:
 let canvas;
 let gl;
 let windowWidth = 0; // The canvas size is initialized in index.html !!!
 let windowHeight = 0;
-let projectionMatrix = {};
+let frame_count = 0;
+let target_frame = 0;
+let refreshed_recently = false;
+let projectionMatrix = glMatrix.mat4.create();
 const pressedKeys = {};
 
 const models = [];
 
 let textNode;
+
+/**
+ * Entry point to our JS code. It is called at the very bottom of this script.
+ * @return Promise (async)
+ */
+async function Start() {
+  canvas = document.getElementById('glcanvas');
+
+  initWebGL(canvas); // Create the GL object
+  
+  if (!gl) {
+    log(Constants.WEBGL_UNSUPPORTED_ERR);
+    return;
+  }
+
+  setGLContext(); //  Initialize the GL context
+  setGLContextHandlers();
+  createBaseCubeVertexBuffers(); // For now, this creates our first cube.
+  await LoadContent(); // Loads textures, etc. uses async/await.
+  Update();
+}
+
+function contextLost(event) {
+  log('Lost web context!');
+  log(event);
+  event.preventDefault();
+  cancelAnimationFrame(requestId);
+}
+
+function contextGained(event) {
+  log('Regained webgl context!');
+  log(event);
+  initWebGL();
+  setGLContext();
+}
+
+function setGLContextHandlers() {
+  canvas.addEventListener('webglcontextlost', contextLost, false);
+  canvas.addEventListener('webglcontextrestored', contextGained, false);
+}
+
+/**
+ * Loads any content we need, called once after we have ensured webGL is working.
+ * @return N/A
+ */
+async function LoadContent() {
+  Camera.Initialize();
+
+  document.onkeydown = handleKeyDown;
+  document.onkeyup = handleKeyUp;
+
+  await loadTextureForModel(models[0]);
+
+  makeCubes();
+}
+
+/** Update:
+ * The main looped function of our program. Updates game logic, then draws the scene.
+ * @return N/A
+ */
+function Update() {
+  Object.keys(pressedKeys).forEach((button) => {
+    if (pressedKeys[button]) { // If the button was pressed...
+      const keybinding = keyBindings.getKeyBinding(button); // See if it has a keybinding...
+      if (!keybinding) { return; } // If not - go to the next pressedKey.
+      switch (keybinding.type) { // Do different things for diff keybinds
+        case Constants.CAMERA_ACTION:
+          Camera.Action(keybinding.name);
+          break;
+        case Constants.GENERAL_KEYBINDING:
+          if (keybinding.name === Constants.REFRESH) {
+            refresh();
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  });
+
+  // Then draw the frame
+  Camera.UpdateCamera();
+  textNode.nodeValue = Camera.GetPositionString();
+
+  frame_count = frame_count + 1;
+  if (frame_count >= target_frame) {
+    refreshed_recently = false;
+  }
+
+  Draw();
+  // Rinse and repeat
+  requestId = requestAnimationFrame(Update, canvas);
+}
+
+/** Draw:
+ * Draws everything to the screen, called once per frame (approx 60fps)
+ * @return N/A
+ */
+function Draw() {
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  setMatrixUniforms(); // Update the view and projection matrices
+
+  // For each model, set the vertices, texture, etc, then draw them.
+  for (let i = 0; i < models.length; i++) {
+    // Bind the vertex, index, and texture coordinate data
+    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].vertexBuffer);
+    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].textureCoordBuffer);
+    gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, models[i].indexBuffer);
+
+    // Bind the current texture data
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, models[i].textureBinding);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, 'uSampler'), 0);
+
+    // Draw the model.
+    gl.drawElements(gl.TRIANGLES, models[i].indices.length, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+/** loadTextureForModel:
+ * loads the texture file as described in the model
+ * @return N/A
+ */
+async function loadTextureForModel(model) {
+  return new Promise((success, failure) => {
+    Object.assign(model, { textureBinding: gl.createTexture() });
+    const img = new Image();
+    // Always define onload func first, then set src property.
+    img.onload = function () { // eslint-disable-line
+      handleTextureLoaded(img, model.textureBinding, model);
+      return success();
+    };
+
+    img.onerror = function () { // eslint-disable-line
+      log(`Error loading texture: ${img.src}`);
+      return failure();
+    };
+
+    img.src = model.textureSourceFile;
+  });
+}
 
 /**
  * Initializes our gl object.
@@ -34,6 +190,7 @@ function initWebGL() {
 
   try {
     gl = canvas.getContext(Constants.WEBGL_CANVAS_CONTEXT);
+    log(`Canvas dimensions: ${canvas.width}, ${canvas.height}`);
   } catch (e) {
     log(Constants.WEBGL_CREATION_ERR);
   }
@@ -41,6 +198,27 @@ function initWebGL() {
   if (!gl) {
     alert(Constants.WEBGL_UNSUPPORTED_ERR); // eslint-disable-line
   }
+}
+
+function setGLContext() {
+  gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
+  const clearColor = Constants.COLOR_CORNFLOWER_BLUE;
+  gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a); // Clear to black, fully opaque
+  gl.clearDepth(1.0); // Clear everything
+  gl.enable(gl.DEPTH_TEST); // Enable depth testing
+  gl.depthFunc(gl.LEQUAL); // Near things obscure far things
+  gl.enable(gl.CULL_FACE); // These two lines enable culling,
+  gl.cullFace(gl.BACK); // and we set the mode to BACK face culling.
+
+  initShaders();
+
+  // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
+  projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
+    aspect_ratio,
+    default_near_Z,
+    default_far_z);
+
+  gl_ex = gl.getExtension('WEBGL_lose_context'); // Prep for losing context.
 }
 
 function setMatrixUniforms() {
@@ -54,6 +232,9 @@ function setMatrixUniforms() {
 
 function handleKeyDown(event) {
   pressedKeys[event.keyCode] = true;
+  if (gl.isContextLost()) {
+    gl_ex.restoreContext();
+  }
 }
 
 function handleKeyUp(event) {
@@ -77,10 +258,20 @@ function initShaders() {
   gl.attachShader(shaderProgram, vertexShader);
   gl.attachShader(shaderProgram, fragmentShader);
   gl.linkProgram(shaderProgram);
+  gl.validateProgram(shaderProgram);
 
   // If creating the shader program failed, alert
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS) && !gl.isContextLost()) {
     throw new Error('Unable to initialize the shader program!');
+  }
+
+  // Check the state of the vertex and fragment shaders:
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
+    throw `Failed to compile vertex shader: ${gl.getShaderInfoLog(vertexShader)}`;
+  }
+
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
+    throw `Failed to compile vertex shader: ${gl.getShaderInfoLog(fragmentShader)}`;
   }
 
   gl.useProgram(shaderProgram);
@@ -93,7 +284,8 @@ function initShaders() {
 }
 
 
-function initBuffers() {
+function createBaseCubeVertexBuffers() {
+  models.length = 0; // Neat way of emptying a const array reference.
   let cubeCopy = {};
   cubeCopy = jQuery.extend(true, {}, cubeBaseModel);
 
@@ -160,6 +352,23 @@ function makeCubes() { // eslint-disable-line
   }
 }
 
+function refresh() {
+  if (refreshed_recently == false) {
+    // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
+    projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
+      aspect_ratio,
+      default_near_Z,
+      default_far_z);
+
+    setMatrixUniforms();
+
+    refreshed_recently = true;
+    target_frame = frame_count + 100;
+  } else {
+    log('I refreshed too recently.');
+  }
+}
+
 function handleTextureLoaded(image, texture, model) {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -171,122 +380,14 @@ function handleTextureLoaded(image, texture, model) {
   Object.assign(model, { textureBinding: texture });
 }
 
-function Draw() {
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // eslint-disable-line
-
-  for (let i = 0; i < models.length; i++) {
-    // Bind the vertex, index, and texture coordinate data
-    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].vertexBuffer);
-    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].textureCoordBuffer);
-    gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, models[i].indexBuffer);
-    setMatrixUniforms();
-
-    // Bind the current texture data
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, models[i].textureBinding);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, 'uSampler'), 0);
-
-    // Draw the model.
-    gl.drawElements(gl.TRIANGLES, models[i].indices.length, gl.UNSIGNED_SHORT, 0);
-  }
-}
-
-function Update() {
-  Object.keys(pressedKeys).forEach((button) => {
-    if (pressedKeys[button]) { // If the button was pressed...
-      const action = keyBindings.getKeyBinding(button); // Get what action it does
-      Camera.Action(action); // For now, just immediately pass commands to the camera.
-    }
-  });
-
-  // Then draw the frame
-  Camera.UpdateCamera();
-  textNode.nodeValue = Camera.GetPositionString();
-  Draw();
-
-  // Rinse and repeat
-  requestAnimationFrame(Update);
-}
-
-async function loadTextureForModel(model) {
-  return new Promise((success, failure) => {
-    Object.assign(model, { textureBinding: gl.createTexture() });
-    const img = new Image();
-    // Always define onload func first, then set src property.
-    img.onload = function () { // eslint-disable-line
-      handleTextureLoaded(img, model.textureBinding, model);
-      return success();
-    };
-
-    img.onerror = function () { // eslint-disable-line
-      log(`Error loading texture: ${img.src}`);
-      return failure();
-    };
-
-    img.src = model.textureSourceFile;
-  });
-}
-
-/**
- * Loads any content we need, called once after we have ensured webGL is working.
- * @return N/A
- */
-async function LoadContent() {
-  // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
-  projectionMatrix = makePerspective(Constants.FIELD_OF_VIEW_ANGLE, // eslint-disable-line 
-    windowWidth / windowHeight,
-    Constants.NEAR_Z_INDEX,
-    Constants.FAR_Z_INDEX);
-
-  Camera.Initialize();
-
-  document.onkeydown = handleKeyDown;
-  document.onkeyup = handleKeyUp;
-
-  await loadTextureForModel(models[0]);
-}
-
-/**
- * Entry point to our JS code. It is called at the very bottom of this script.
- * @return Promise (async)
- */
-async function Start() {
-  canvas = document.getElementById('glcanvas');
+document.addEventListener('DOMContentLoaded', () => {
+  log('DOM fully loaded and parsed. Application starting...');
 
   // This is how we can overlay some text.
   const textElement = document.getElementById('overlayText1');
   textNode = document.createTextNode('');
   textElement.appendChild(textNode);
 
-  windowWidth = canvas.width;
-  windowHeight = canvas.height;
-  initWebGL(canvas); // Initialize the GL context
-
-  if (!gl) {
-    log(Constants.WEBGL_UNSUPPORTED_ERR);
-    return;
-  }
-
-  const clearColor = Constants.COLOR_CORNFLOWER_BLUE;
-  gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a); // Clear to black, fully opaque
-  gl.clearDepth(1.0); // Clear everything
-  gl.enable(gl.DEPTH_TEST); // Enable depth testing
-  gl.depthFunc(gl.LEQUAL); // Near things obscure far things
-  gl.enable(gl.CULL_FACE); // These two lines enable culling,
-  gl.cullFace(gl.BACK); // and we set the mode to BACK face culling.
-
-  initBuffers(); // For now, this creates our first cube.
-  await LoadContent(); // Loads textures, etc. uses async/await.
-  initShaders();
-
-  makeCubes();
-
-  requestAnimationFrame(Update);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  log('DOM fully loaded and parsed. Application starting...');
+  // Now start our game.
   Start();
 });

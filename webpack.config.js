@@ -5,7 +5,7 @@ module.exports = {
     "filename": "bin/bundle.js"
   },
   "module": {
-    loaders: [
+    rules: [
       {
         "test": /\.glsl$/,
         "loader": "webpack-glsl-loader"

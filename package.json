@@ -4,10 +4,11 @@
   "description": "A webGL dungeon crawler by Bob Szymanski.",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf ./bin && webpack",
+    "build": "rm -rf ./bin && webpack --mode=development",
     "build:windows": "IF EXIST ./bin ( rmdir /Q /S \"./bin\") && webpack",
+    "build:prod": "",
     "start": "python -m SimpleHTTPServer 8080",
-    "start:python3": "python -m http.server 8080",
+    "start:python3": "python -it m http.server 8080",
     "lint": "./node_modules/.bin/eslint --ext .js --env node src",
     "lint:fix": "./node_modules/.bin/eslint --ext .js --fix --env node src"
   },
@@ -27,16 +28,12 @@
   },
   "homepage": "https://github.com/bobSzymanski/webgl-dungeon#readme",
   "devDependencies": {
-    "eslint": "^6.2.2",
-    "eslint-config-airbnb": "^18.0.1",
-    "eslint-plugin-import": "^2.18.2",
-    "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-react": "^7.14.3",
-    "jquery": "^3.5.0",
-    "webpack": "^4.42.1",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
     "webpack-glsl-loader": "^1.0.1"
   },
   "dependencies": {
-    "mem": "^4.0.0"
+    "jquery": "^3.7.1",
+    "npm": "^10.1.0"
   }
 }

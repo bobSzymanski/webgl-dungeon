@@ -12,6 +12,7 @@ const Camera = {
   cameraRotation: {},
   upVector: {},
   targetVector: {},
+  rotatedTarget: {},
   viewMatrix: {},
   leftRightRotation: 0.0,
   upDownRotation: 0.0,
@@ -24,7 +25,7 @@ const Camera = {
   Initialize() {
     this.cameraRotation = glMatrix.mat4.create();
     this.viewMatrix = glMatrix.mat4.create();
-    this.cameraPosition = glMatrix.vec3.fromValues(-3, -3, 3);
+    this.cameraPosition = glMatrix.vec3.fromValues(0.5, 0.5, 3);
 
     this.upVector = glMatrix.vec3.fromValues(0, 0, 1);
     this.targetVector = glMatrix.vec3.fromValues(0, 1, 0);
@@ -39,16 +40,16 @@ const Camera = {
     glMatrix.mat4.fromXRotation(upDownRotationMatrix, this.upDownRotation);
     glMatrix.mat4.multiply(this.cameraRotation, leftRightRotationMatrix, upDownRotationMatrix);
 
-    const rotatedTarget = glMatrix.vec3.create();
-    glMatrix.vec3.transformMat4(rotatedTarget, this.targetVector, this.cameraRotation);
-    glMatrix.vec3.add(rotatedTarget, rotatedTarget, this.cameraPosition);
+    this.rotatedTarget = glMatrix.vec3.create();
+    glMatrix.vec3.transformMat4(this.rotatedTarget, this.targetVector, this.cameraRotation);
+    glMatrix.vec3.add(this.rotatedTarget, this.rotatedTarget, this.cameraPosition);
 
     const rotatedUpVector = glMatrix.vec3.create();
     glMatrix.vec3.transformMat4(rotatedUpVector, this.upVector, this.cameraRotation);
 
     glMatrix.mat4.lookAt(this.viewMatrix, // OUT
       this.cameraPosition, // EYE
-      rotatedTarget, // CENTER
+      this.rotatedTarget, // CENTER
       rotatedUpVector); // UP
   },
 
@@ -119,6 +120,10 @@ const Camera = {
 
   GetPositionString() {
     return `X: ${this.cameraPosition[0].toFixed(3)}, Y: ${this.cameraPosition[1].toFixed(3)}, Z: ${this.cameraPosition[2].toFixed(3)}`; // eslint-disable-line
+  },
+
+  GetRotatedTargetVectorString() {
+    return `X: ${this.rotatedTarget[0].toFixed(3)}, Y: ${this.rotatedTarget[1].toFixed(3)}, Z: ${this.rotatedTarget[2].toFixed(3)}`; // eslint-disable-line
   },
 
   Action(value) { // eslint-disable-line
