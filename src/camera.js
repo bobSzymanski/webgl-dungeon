@@ -7,160 +7,159 @@ const constants = require('./constants');
  * arg, so that value will be overwritten. Console log before and after to see what happens!
  */
 
-const Camera = {
-  cameraPosition: {},
-  cameraRotation: {},
-  upVector: {},
-  targetVector: {},
-  rotatedTarget: {},
-  viewMatrix: {},
-  leftRightRotation: 0.0,
-  upDownRotation: 0.0,
-  defaultRotationAmount: 0.1,
-  defaultMovementIncrement: 0.1,
+let cameraPosition = {};
+let cameraRotation = {};
+let upVector = {};
+let targetVector = {};
+let rotatedTarget = {};
+let viewMatrix = {};
+let leftRightRotation = 0.0; // How much the camera is rotated, start at zero.
+let upDownRotation = 0.0; // How much the camera is rotated, start at zero.
+const defaultRotationAmount = 0.1; // How much the camera is rotated per-frame when turning.
+const defaultMovementIncrement = 0.1; // How much the camera moves per-frame.
 
+// Internal functions:
 
-  // Camera Functions
+function RotateLeft() {
+  leftRightRotation += defaultRotationAmount;
+}
 
-  Initialize() {
-    this.cameraRotation = glMatrix.mat4.create();
-    this.viewMatrix = glMatrix.mat4.create();
-    this.cameraPosition = glMatrix.vec3.fromValues(0.5, 0.5, 3);
+function RotateRight() {
+  leftRightRotation -= defaultRotationAmount;
+}
 
-    this.upVector = glMatrix.vec3.fromValues(0, 0, 1);
-    this.targetVector = glMatrix.vec3.fromValues(0, 1, 0);
-  },
+function RotateUp() {
+  upDownRotation += defaultRotationAmount;
+}
 
-  UpdateCamera() {
-    this.cameraRotation = glMatrix.mat4.create();
-    const upDownRotationMatrix = glMatrix.mat4.create();
-    const leftRightRotationMatrix = glMatrix.mat4.create();
+function RotateDown() {
+  upDownRotation -= defaultRotationAmount;
+}
 
-    glMatrix.mat4.fromZRotation(leftRightRotationMatrix, this.leftRightRotation);
-    glMatrix.mat4.fromXRotation(upDownRotationMatrix, this.upDownRotation);
-    glMatrix.mat4.multiply(this.cameraRotation, leftRightRotationMatrix, upDownRotationMatrix);
+function RaiseCamera() {
+  cameraPosition[2] += defaultMovementIncrement;
+}
 
-    this.rotatedTarget = glMatrix.vec3.create();
-    glMatrix.vec3.transformMat4(this.rotatedTarget, this.targetVector, this.cameraRotation);
-    glMatrix.vec3.add(this.rotatedTarget, this.rotatedTarget, this.cameraPosition);
+function LowerCamera() {
+  cameraPosition[2] -= defaultMovementIncrement;
+}
 
-    const rotatedUpVector = glMatrix.vec3.create();
-    glMatrix.vec3.transformMat4(rotatedUpVector, this.upVector, this.cameraRotation);
+function MoveForward() {
+  const baseVector = glMatrix.vec3.fromValues(0, 1, 0);
+  glMatrix.vec3.scale(baseVector, baseVector, defaultMovementIncrement); // scale movement by the increment factor.
+  glMatrix.vec3.transformMat4(baseVector, baseVector, cameraRotation);
 
-    glMatrix.mat4.lookAt(this.viewMatrix, // OUT
-      this.cameraPosition, // EYE
-      this.rotatedTarget, // CENTER
-      rotatedUpVector); // UP
-  },
+  // Since we only move in the X-Z plane, let's add components here individually ourselves.
+  cameraPosition[0] += baseVector[0];
+  cameraPosition[1] += baseVector[1];
+}
 
-  RotateLeft() {
-    this.leftRightRotation += this.defaultRotationAmount;
-  },
+function MoveBackwards() {
+  const baseVector = glMatrix.vec3.fromValues(0, 1, 0);
+  glMatrix.vec3.scale(baseVector, baseVector, defaultMovementIncrement); // scale movement by the increment factor.
+  glMatrix.vec3.transformMat4(baseVector, baseVector, cameraRotation);
 
-  RotateRight() {
-    this.leftRightRotation -= this.defaultRotationAmount;
-  },
+  // Since we only move in the X-Z plane, let's add components here individually ourselves.
+  cameraPosition[0] -= baseVector[0];
+  cameraPosition[1] -= baseVector[1];
+}
 
-  RotateUp() {
-    this.upDownRotation += this.defaultRotationAmount;
-  },
+function StrafeLeft() {
+  const baseVector = glMatrix.vec3.fromValues(-1, 0, 0);
+  glMatrix.vec3.scale(baseVector, baseVector, defaultMovementIncrement); // scale movement by the increment factor.
+  glMatrix.vec3.transformMat4(baseVector, baseVector, cameraRotation);
 
-  RotateDown() {
-    this.upDownRotation -= this.defaultRotationAmount;
-  },
+  cameraPosition[0] += baseVector[0];
+  cameraPosition[1] += baseVector[1];
+}
 
-  RaiseCamera() {
-    this.cameraPosition[2] += this.defaultMovementIncrement;
-  },
+function StrafeRight() {
+  const baseVector = glMatrix.vec3.fromValues(1, 0, 0);
+  glMatrix.vec3.scale(baseVector, baseVector, defaultMovementIncrement); // scale movement by the increment factor.
+  glMatrix.vec3.transformMat4(baseVector, baseVector, cameraRotation);
+  cameraPosition[0] += baseVector[0];
+  cameraPosition[1] += baseVector[1];
+}
 
-  LowerCamera() {
-    this.cameraPosition[2] -= this.defaultMovementIncrement;
-  },
+// External functions:
 
-  MoveForward() {
-    const baseVector = glMatrix.vec3.fromValues(0, 1, 0);
-    glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); // scale movement by the increment factor.
-    glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
+export function Initialize() {
+  cameraRotation = glMatrix.mat4.create();
+  viewMatrix = glMatrix.mat4.create();
+  cameraPosition = glMatrix.vec3.fromValues(0.5, 0.5, 3); // This is just a random point in 3D space, to start.
 
-    // Since we only move in the X-Z plane, let's add components here individually ourselves.
-    this.cameraPosition[0] += baseVector[0];
-    this.cameraPosition[1] += baseVector[1];
-  },
+  upVector = glMatrix.vec3.fromValues(0, 0, 1); // Up is the Z axis
+  targetVector = glMatrix.vec3.fromValues(0, 1, 0); // Forward is (at the start) along the Y axis.
+}
 
-  MoveBackwards() {
-    const baseVector = glMatrix.vec3.fromValues(0, 1, 0);
-    glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); // scale movement by the increment factor.
-    glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
+export function UpdateCamera() {
+  cameraRotation = glMatrix.mat4.create();
+  const upDownRotationMatrix = glMatrix.mat4.create();
+  const leftRightRotationMatrix = glMatrix.mat4.create();
 
-    // Since we only move in the X-Z plane, let's add components here individually ourselves.
-    this.cameraPosition[0] -= baseVector[0];
-    this.cameraPosition[1] -= baseVector[1];
-  },
+  glMatrix.mat4.fromZRotation(leftRightRotationMatrix, leftRightRotation);
+  glMatrix.mat4.fromXRotation(upDownRotationMatrix, upDownRotation);
+  glMatrix.mat4.multiply(cameraRotation, leftRightRotationMatrix, upDownRotationMatrix);
 
-  StrafeLeft() {
-    const baseVector = glMatrix.vec3.fromValues(-1, 0, 0);
-    glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); // scale movement by the increment factor.
-    glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
+  rotatedTarget = glMatrix.vec3.create();
+  glMatrix.vec3.transformMat4(rotatedTarget, targetVector, cameraRotation);
+  glMatrix.vec3.add(rotatedTarget, rotatedTarget, cameraPosition);
 
-    this.cameraPosition[0] += baseVector[0];
-    this.cameraPosition[1] += baseVector[1];
-  },
+  const rotatedUpVector = glMatrix.vec3.create();
+  glMatrix.vec3.transformMat4(rotatedUpVector, upVector, cameraRotation);
 
-  StrafeRight() {
-    const baseVector = glMatrix.vec3.fromValues(1, 0, 0);
-    glMatrix.vec3.scale(baseVector, baseVector, this.defaultMovementIncrement); // scale movement by the increment factor.
-    glMatrix.vec3.transformMat4(baseVector, baseVector, this.cameraRotation);
-    this.cameraPosition[0] += baseVector[0];
-    this.cameraPosition[1] += baseVector[1];
-  },
+  glMatrix.mat4.lookAt(viewMatrix, // OUT
+    cameraPosition, // EYE
+    rotatedTarget, // CENTER
+    rotatedUpVector); // UP
+}
 
-  GetViewMatrix() {
-    return this.viewMatrix;
-  },
+export function GetPositionString() {
+  return `X: ${cameraPosition[0].toFixed(3)}, Y: ${cameraPosition[1].toFixed(3)}, Z: ${cameraPosition[2].toFixed(3)}`; // eslint-disable-line
+}
 
-  GetPositionString() {
-    return `X: ${this.cameraPosition[0].toFixed(3)}, Y: ${this.cameraPosition[1].toFixed(3)}, Z: ${this.cameraPosition[2].toFixed(3)}`; // eslint-disable-line
-  },
+export function GetRotatedTargetVectorString() {
+  return `X: ${rotatedTarget[0].toFixed(3)}, Y: ${rotatedTarget[1].toFixed(3)}, Z: ${rotatedTarget[2].toFixed(3)}`; // eslint-disable-line
+}
 
-  GetRotatedTargetVectorString() {
-    return `X: ${this.rotatedTarget[0].toFixed(3)}, Y: ${this.rotatedTarget[1].toFixed(3)}, Z: ${this.rotatedTarget[2].toFixed(3)}`; // eslint-disable-line
-  },
+export function GetViewMatrix() {
+  return viewMatrix;
+}
 
-  Action(value) { // eslint-disable-line
-    switch (value) { // If value is a legit action, perform it!
-      case constants.ROTATE_UP:
-        this.RotateUp();
-        break;
-      case constants.ROTATE_DOWN:
-        this.RotateDown();
-        break;
-      case constants.ROTATE_LEFT:
-        this.RotateLeft();
-        break;
-      case constants.ROTATE_RIGHT:
-        this.RotateRight();
-        break;
-      case constants.FORWARD:
-        this.MoveForward();
-        break;
-      case constants.REVERSE:
-        this.MoveBackwards();
-        break;
-      case constants.LEFT_STRAFE:
-        this.StrafeLeft();
-        break;
-      case constants.RIGHT_STRAFE:
-        this.StrafeRight();
-        break;
-      case constants.RAISE_CAM:
-        this.RaiseCamera();
-        break;
-      case constants.LOWER_CAM:
-        this.LowerCamera();
-        break;
-      default:
-    }
+export function Action(value) { // eslint-disable-line
+  switch (value) { // If value is a legit action, perform it!
+    case constants.ROTATE_UP:
+      RotateUp();
+      break;
+    case constants.ROTATE_DOWN:
+      RotateDown();
+      break;
+    case constants.ROTATE_LEFT:
+      RotateLeft();
+      break;
+    case constants.ROTATE_RIGHT:
+      RotateRight();
+      break;
+    case constants.FORWARD:
+      MoveForward();
+      break;
+    case constants.REVERSE:
+      MoveBackwards();
+      break;
+    case constants.LEFT_STRAFE:
+      StrafeLeft();
+      break;
+    case constants.RIGHT_STRAFE:
+      StrafeRight();
+      break;
+    case constants.RAISE_CAM:
+      RaiseCamera();
+      break;
+    case constants.LOWER_CAM:
+      LowerCamera();
+      break;
+    default:
   }
-};
+}
 
-module.exports = Camera;
+export default { Action, GetPositionString, GetViewMatrix, Initialize, UpdateCamera };

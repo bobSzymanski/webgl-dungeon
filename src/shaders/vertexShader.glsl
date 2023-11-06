@@ -1,3 +1,7 @@
+/* Vertex shader
+   This is an incredibly simple vertex shader, basically used to apply ambient lighting. 
+   We currently do not have any directional lighting (although there are some unused vec3's here)
+*/ 
 
 attribute highp vec3 aVertexPosition;
 attribute highp vec2 aTextureCoord;

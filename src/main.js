@@ -28,9 +28,6 @@ let canvas;
 let gl;
 let windowWidth = 0; // The canvas size is initialized in index.html !!!
 let windowHeight = 0;
-let frame_count = 0;
-let target_frame = 0;
-let refreshed_recently = false;
 let projectionMatrix = glMatrix.mat4.create();
 const pressedKeys = {};
 
@@ -107,9 +104,7 @@ function Update() {
           Camera.Action(keybinding.name);
           break;
         case Constants.GENERAL_KEYBINDING:
-          if (keybinding.name === Constants.REFRESH) {
-            refresh();
-          }
+          // TODO: Something else here
           break;
         default:
           break;
@@ -120,13 +115,8 @@ function Update() {
   // Then draw the frame
   Camera.UpdateCamera();
   textNode.nodeValue = Camera.GetPositionString();
-
-  frame_count = frame_count + 1;
-  if (frame_count >= target_frame) {
-    refreshed_recently = false;
-  }
-
   Draw();
+
   // Rinse and repeat
   requestId = requestAnimationFrame(Update, canvas);
 }
@@ -318,6 +308,7 @@ function makeCubes() { // eslint-disable-line
   for (let y = 1; y < 11; y++) { // We already draw a cube at index 0, so just start with a translation of 1.
     for (let i = 1; i < 11; i++) { // Therefore, looping 1 -> 11 makes  10 rows of cubes.
       let toAdd = {};
+      const randomOffset = Math.floor(Math.random() * 5); // Make each cube have a random height offset. 
       toAdd = jQuery.extend(true, {}, models[0]);
 
       // Every THIRD item in the array will correspond to the same coordinate of the next vertex.
@@ -328,6 +319,10 @@ function makeCubes() { // eslint-disable-line
 
       for (let j = 1; j < models[0].vertices.length; j += 3) { // Shift cubes in the Y direction
         toAdd.vertices[j] += y;
+      }
+
+      for (let j = 2; j < models[0].vertices.length; j += 3) { // Shift cubes in the Z direction, randomly
+        toAdd.vertices[j] += randomOffset;
       }
 
       toAdd.vertexBuffer = gl.createBuffer();
@@ -349,23 +344,6 @@ function makeCubes() { // eslint-disable-line
 
       models.push(toAdd);
     }
-  }
-}
-
-function refresh() {
-  if (refreshed_recently == false) {
-    // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
-    projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
-      aspect_ratio,
-      default_near_Z,
-      default_far_z);
-
-    setMatrixUniforms();
-
-    refreshed_recently = true;
-    target_frame = frame_count + 100;
-  } else {
-    log('I refreshed too recently.');
   }
 }
 

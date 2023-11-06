@@ -1,3 +1,7 @@
+/* Fragment shader
+   This is an incredibly simple fragment shader, basically used to apply texture coloring.
+*/ 
+
 varying highp vec2 vTextureCoord;
 varying highp vec3 vLighting;
 uniform sampler2D uSampler;
