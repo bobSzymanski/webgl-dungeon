@@ -1,5 +1,5 @@
-const glMatrix = require('./extern/gl-matrix.js');
-const constants = require('./constants');
+import constants from './constants';
+import glMatrix from './extern/gl-matrix.js';
 
 /* Be wary of the functions defined in gl-matrix! Many of them take the form of accepting the OUT
  * parameter, such that the argument of the function will be modified in the parent context.
@@ -128,34 +128,34 @@ export function GetViewMatrix() {
 
 export function Action(value) { // eslint-disable-line
   switch (value) { // If value is a legit action, perform it!
-    case constants.ROTATE_UP:
+    case constants.config.ROTATE_UP:
       RotateUp();
       break;
-    case constants.ROTATE_DOWN:
+    case constants.config.ROTATE_DOWN:
       RotateDown();
       break;
-    case constants.ROTATE_LEFT:
+    case constants.config.ROTATE_LEFT:
       RotateLeft();
       break;
-    case constants.ROTATE_RIGHT:
+    case constants.config.ROTATE_RIGHT:
       RotateRight();
       break;
-    case constants.FORWARD:
+    case constants.config.FORWARD:
       MoveForward();
       break;
-    case constants.REVERSE:
+    case constants.config.REVERSE:
       MoveBackwards();
       break;
-    case constants.LEFT_STRAFE:
+    case constants.config.LEFT_STRAFE:
       StrafeLeft();
       break;
-    case constants.RIGHT_STRAFE:
+    case constants.config.RIGHT_STRAFE:
       StrafeRight();
       break;
-    case constants.RAISE_CAM:
+    case constants.config.RAISE_CAM:
       RaiseCamera();
       break;
-    case constants.LOWER_CAM:
+    case constants.config.LOWER_CAM:
       LowerCamera();
       break;
     default:

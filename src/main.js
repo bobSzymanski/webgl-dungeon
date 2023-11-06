@@ -1,14 +1,13 @@
-import log from './logger';
+import jQuery from 'jquery';
 
-// TODO: consolidate between import & require pls
-const jQuery = require('jquery');
-const Constants = require('./constants.js');
-const glMatrix = require('./extern/gl-matrix.js');
-const VERTEX_SHADER_SOURCE = require('./shaders/vertexShader.glsl');
-const FRAGMENT_SHADER_SOURCE = require('./shaders/fragmentShader.glsl');
-const cubeBaseModel = require('../models/basicCube.js');
-const Camera = require('./camera.js');
-const keyBindings = require('./keybinds');
+import camera from './camera';
+import constants from './constants';
+import glMatrix from './extern/gl-matrix.js';
+import keyBindings from'./keybinds';
+import log from './logger';
+import VERTEX_SHADER_SOURCE from './shaders/vertexShader.glsl';
+import FRAGMENT_SHADER_SOURCE from './shaders/fragmentShader.glsl';
+import cubeModels from '../models/basicCube.js';
 
 const default_FOV = 70;
 const default_near_Z = 0.1;
@@ -45,7 +44,7 @@ async function Start() {
   initWebGL(canvas); // Create the GL object
   
   if (!gl) {
-    log(Constants.WEBGL_UNSUPPORTED_ERR);
+    log(constants.config.WEBGL_UNSUPPORTED_ERR);
     return;
   }
 
@@ -80,7 +79,7 @@ function setGLContextHandlers() {
  * @return N/A
  */
 async function LoadContent() {
-  Camera.Initialize();
+  camera.Initialize();
 
   document.onkeydown = handleKeyDown;
   document.onkeyup = handleKeyUp;
@@ -100,10 +99,10 @@ function Update() {
       const keybinding = keyBindings.getKeyBinding(button); // See if it has a keybinding...
       if (!keybinding) { return; } // If not - go to the next pressedKey.
       switch (keybinding.type) { // Do different things for diff keybinds
-        case Constants.CAMERA_ACTION:
-          Camera.Action(keybinding.name);
+        case constants.config.CAMERA_ACTION:
+          camera.Action(keybinding.name);
           break;
-        case Constants.GENERAL_KEYBINDING:
+        case constants.config.GENERAL_KEYBINDING:
           // TODO: Something else here
           break;
         default:
@@ -113,8 +112,8 @@ function Update() {
   });
 
   // Then draw the frame
-  Camera.UpdateCamera();
-  textNode.nodeValue = Camera.GetPositionString();
+  camera.UpdateCamera();
+  textNode.nodeValue = camera.GetPositionString();
   Draw();
 
   // Rinse and repeat
@@ -179,20 +178,20 @@ function initWebGL() {
   gl = null;
 
   try {
-    gl = canvas.getContext(Constants.WEBGL_CANVAS_CONTEXT);
+    gl = canvas.getContext(constants.config.WEBGL_CANVAS_CONTEXT);
     log(`Canvas dimensions: ${canvas.width}, ${canvas.height}`);
   } catch (e) {
-    log(Constants.WEBGL_CREATION_ERR);
+    log(constants.config.WEBGL_CREATION_ERR);
   }
 
   if (!gl) {
-    alert(Constants.WEBGL_UNSUPPORTED_ERR); // eslint-disable-line
+    alert(constants.config.WEBGL_UNSUPPORTED_ERR); // eslint-disable-line
   }
 }
 
 function setGLContext() {
   gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
-  const clearColor = Constants.COLOR_CORNFLOWER_BLUE;
+  const clearColor = constants.config.COLOR_CORNFLOWER_BLUE;
   gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a); // Clear to black, fully opaque
   gl.clearDepth(1.0); // Clear everything
   gl.enable(gl.DEPTH_TEST); // Enable depth testing
@@ -217,7 +216,7 @@ function setMatrixUniforms() {
 
 
   const mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-  gl.uniformMatrix4fv(mvUniform, false, new Float32Array(Camera.GetViewMatrix()));
+  gl.uniformMatrix4fv(mvUniform, false, new Float32Array(camera.GetViewMatrix()));
 }
 
 function handleKeyDown(event) {
@@ -277,7 +276,7 @@ function initShaders() {
 function createBaseCubeVertexBuffers() {
   models.length = 0; // Neat way of emptying a const array reference.
   let cubeCopy = {};
-  cubeCopy = jQuery.extend(true, {}, cubeBaseModel);
+  cubeCopy = jQuery.extend(true, {}, cubeModels.baseCube);
 
   // Now we translate the cube copy over by 1 coordinate in each direction.
   for (let i = 0; i < cubeCopy.vertices.length; i++) {

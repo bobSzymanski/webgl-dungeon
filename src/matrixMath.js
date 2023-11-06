@@ -1,8 +1,7 @@
 // matrixMath.js
 
-module.exports = {
+export function DegreesToRadians(deg) {
+  return deg * Math.PI / 180.0; // eslint-disable-line
+}
 
-  DegreesToRadians(deg) {
-    return deg * Math.PI / 180.0; // eslint-disable-line
-  }
-};
+export default { DegreesToRadians };

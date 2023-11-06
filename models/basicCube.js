@@ -1,6 +1,6 @@
 // Basic Cube
 
-module.exports = {
+const baseCube = {
 	name: "woodCrate",
 	textureSourceFile: "textures/crate.png",
 	vertices: [
@@ -61,3 +61,5 @@ module.exports = {
 	textureCoordBuffer: {},
 	textureBinding: {},
 };
+
+export default { baseCube };

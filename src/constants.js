@@ -1,5 +1,4 @@
-module.exports = {
-  
+const config = {
   COLOR_CORNFLOWER_BLUE: {
     r: 0.392,
     g: 0.584,
@@ -50,3 +49,5 @@ module.exports = {
   GENERAL_KEYBINDING: 'GENERAL',
   ENGINE_KEYBINDS: 'ENGINE'
 };
+
+export default { config };
