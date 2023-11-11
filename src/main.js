@@ -12,7 +12,7 @@ import cubeModels from '../models/basicCube.js';
 const default_FOV = 70;
 const default_near_Z = 0.1;
 const default_far_z = 100;
-const aspect_ratio = 800 / 600;
+const default_aspect_ratio = 800 / 600;
 const default_width = 800;
 const default_height = 600;
 
@@ -25,8 +25,9 @@ let gl_ex;
 // Instance Variables:
 let canvas;
 let gl;
-let windowWidth = 0; // The canvas size is initialized in index.html !!!
-let windowHeight = 0;
+let windowWidth = default_width; // The canvas size is initialized in index.html !!!
+let windowHeight = default_height;
+let windowAspectRatio = default_aspect_ratio;
 let projectionMatrix = glMatrix.mat4.create();
 const pressedKeys = {};
 
@@ -89,6 +90,13 @@ async function LoadContent() {
   makeCubes();
 }
 
+function setResolution(width, height) {
+  canvas.width = width;
+  canvas.height = height;
+  windowAspectRatio = width / height;
+  setGLContext();
+}
+
 /** Update:
  * The main looped function of our program. Updates game logic, then draws the scene.
  * @return N/A
@@ -104,6 +112,7 @@ function Update() {
           break;
         case constants.config.GENERAL_KEYBINDING:
           // TODO: Something else here
+          setResolution(1024, 1024);
           break;
         default:
           break;
@@ -203,7 +212,7 @@ function setGLContext() {
 
   // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
   projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
-    aspect_ratio,
+    windowAspectRatio,
     default_near_Z,
     default_far_z);
 
