@@ -60,6 +60,7 @@ const baseCube = {
 	indexBuffer: {},
 	textureCoordBuffer: {},
 	textureBinding: {},
+	translationVector: {}
 };
 
 export default { baseCube };

@@ -1,0 +1,56 @@
+Since I'm using Javascript and objects are whatever the hell I want them to be, 
+I thought it might be good to document some of the more class-like stuff. 
+
+Model object:
+{
+  vertices,
+  indices,
+  textureMap,
+  vertexBuffer,
+  indexBuffer,
+  textureBinding,
+  textureCoordBuffer,
+  rotationMatrix,
+  translationVector,
+  name,
+  textureSourceFile
+}
+
+vertices[] - An array of all vertices of the model. The verts are stored as a flat array of floats, such that
+             vertices[0] = vertex1.x, [1] = vertex1.y, [2] = vertex1.z, [3] = vertex2.x, [4] = vertex2.y, etc.
+             In a basic cube, there are 24 vertices (4 corners of a square with 6 unique faces), so the array of points
+             would be 72 items long. (x, y, z) coordinate * 24 = 24 * 3 = 72.
+
+indices[] - An array of all indices of a model. They are stored as an array of Uint16, essentially they should be 
+            positive integers (zero included) that refer to which vertices they coordinate to.
+            Indices are created to decide in which order to draw the vertex coordinates to form triangles on the screen.
+            indices[] should always have a length of a multiple of 3 (since each triangle has 3 indices).
+            The order of indices should use a particular winding (clockwise, or counterclockwise) so that we can perform
+            backface culling. 
+
+textureMap[] - An array of coordinates (float values between 0 and 1). The array has X/Y coordinate pairs, in order,
+               until all faces are defined, so the length should always be 2 times the number of vertices 
+               (since each vertex has an X and Y texture coordinate).
+
+vertexBuffer - A gl.ARRAY_BUFFER - float32Array buffer created by gl.createBuffer() to which we add the vertex data. This should be created
+               once at the creation of the model, and not modified unless you are doing weird things.
+
+indexBuffer - A gl.ELEMENT_ARRAY_BUFFER - Uint16Array buffer created by gl.createBuffer() to which we add the index data. This should be created
+               once at the creation of the model, and not modified unless you are doing weird things.
+               
+textureCoordBuffer - A gl.ARRAY_BUFFER - float32Array buffer created by gl.createBuffer() to which we add the texture data. This should 
+                     be created once at the creation of the model, and not modified unless you are doing weird things.
+               
+textureBinding - A binding between the texture data of this model and its texture. It's basically the response from gl.createTexture().
+                 Right now since there is only 1 texture, the binding is shared across all models. In the future, we should maintain a list of
+                 loaded textures and their texture bindings, so that each model can refer to and reuse these bindings by reference.
+
+name - A name for the model. Currently unused in code (although for developer sanity, might help)
+
+textureSourceFile - A string containing the relative filepath to the texture. It should start with "textures/"
+
+rotationMatrix - (TODO) A matrix defining a rotation to apply to an individual model in the vertex shader on the GPU.
+              By default this should be an identity matrix. This can be updated frequently to apply rotation to our model.
+
+translationVector - A simple vector3 that defines translations in the X, Y, and Z directions. It is added to each vertex in the vertex shader
+                    in order to move an object (translation). This can be updated frequently to apply translations to our model.

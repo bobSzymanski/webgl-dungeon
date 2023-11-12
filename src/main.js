@@ -19,8 +19,10 @@ const default_height = 600;
 let requestId;
 let shaderProgram;
 let vertexPositionAttribute;
+let vertexTranslationAttribute;
 let textureCoordAttribute;
 let gl_ex;
+let pUniform, mvUniform;
 
 // Instance Variables:
 let canvas;
@@ -29,13 +31,14 @@ let windowWidth = default_width; // The canvas size is initialized in index.html
 let windowHeight = default_height;
 let windowAspectRatio = default_aspect_ratio;
 let projectionMatrix = glMatrix.mat4.create();
+let projectionMatrixFlat;
 const pressedKeys = {};
 
 const models = [];
 
 let textNode;
 
-/**
+/** Start ()
  * Entry point to our JS code. It is called at the very bottom of this script.
  * @return Promise (async)
  */
@@ -50,7 +53,7 @@ async function Start() {
   }
 
   setGLContext(); //  Initialize the GL context
-  setGLContextHandlers();
+  setGLContextHandlers(); // Add callbacks when GL context is lost or regained
   createBaseCubeVertexBuffers(); // For now, this creates our first cube.
   await LoadContent(); // Loads textures, etc. uses async/await.
   Update();
@@ -88,8 +91,16 @@ async function LoadContent() {
   await loadTextureForModel(models[0]);
 
   makeCubes();
+
+  // Create references to view and projection matrices in the glsl program
+  pUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+  mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
 }
 
+/** setResolution ( number - width, number - height)
+ * Call to change the resolution of the GL canvas. Also re-sets the GL context and updates the aspect ratio.
+ * @return N/A
+ */
 function setResolution(width, height) {
   canvas.width = width;
   canvas.height = height;
@@ -112,7 +123,7 @@ function Update() {
           break;
         case constants.config.GENERAL_KEYBINDING:
           // TODO: Something else here
-          setResolution(1024, 1024);
+           models[0].translationVector[0] += 0.25;
           break;
         default:
           break;
@@ -135,16 +146,24 @@ function Update() {
  */
 function Draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  setMatrixUniforms(); // Update the view and projection matrices
+  setMatrixUniforms();
 
   // For each model, set the vertices, texture, etc, then draw them.
   for (let i = 0; i < models.length; i++) {
     // Bind the vertex, index, and texture coordinate data
     gl.bindBuffer(gl.ARRAY_BUFFER, models[i].vertexBuffer);
     gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, models[i].textureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, models[i].indexBuffer);
+
+    // Pass translation vector to the shader:
+    gl.uniform3f(gl.getUniformLocation(shaderProgram, 'aVertexTranslation'),
+      models[i].translationVector[0],
+      models[i].translationVector[1],
+      models[i].translationVector[2]);
 
     // Bind the current texture data
     gl.activeTexture(gl.TEXTURE0);
@@ -216,16 +235,14 @@ function setGLContext() {
     default_near_Z,
     default_far_z);
 
+  projectionMatrixFlat = new Float32Array(projectionMatrix.flatten());
   gl_ex = gl.getExtension('WEBGL_lose_context'); // Prep for losing context.
 }
 
 function setMatrixUniforms() {
-  const pUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
-  gl.uniformMatrix4fv(pUniform, false, new Float32Array(projectionMatrix.flatten()));
-
-
-  const mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-  gl.uniformMatrix4fv(mvUniform, false, new Float32Array(camera.GetViewMatrix()));
+  // Set the projection, and then the view matrix.
+  gl.uniformMatrix4fv(pUniform, false, projectionMatrixFlat);
+  gl.uniformMatrix4fv(mvUniform, false, camera.GetViewMatrix());
 }
 
 function handleKeyDown(event) {
@@ -241,6 +258,7 @@ function handleKeyUp(event) {
 
 /**
 * initShaders initializes our GLSL, compiles it from source, and attaches it.
+* Since we use webpack-glsl-loader, the GLSL source files can be imported just like any other JS file.
 * @return: N/A
 */
 function initShaders() {
@@ -299,15 +317,15 @@ function createBaseCubeVertexBuffers() {
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeCopy.vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeCopy.vertices), gl.STATIC_DRAW);
 
-
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeCopy.textureCoordBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeCopy.textureMap),
     gl.STATIC_DRAW);
 
-
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeCopy.indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
     new Uint16Array(cubeCopy.indices), gl.STATIC_DRAW);
+
+  cubeCopy.translationVector = glMatrix.vec3.fromValues(0, 0, 0);
 
   models.push(cubeCopy);
 }
@@ -349,6 +367,8 @@ function makeCubes() { // eslint-disable-line
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, toAdd.indexBuffer);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(toAdd.indices), gl.STATIC_DRAW);
+
+      toAdd.translationVector = glMatrix.vec3.fromValues(0, 0, 0);
 
       models.push(toAdd);
     }
