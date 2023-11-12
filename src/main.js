@@ -123,7 +123,16 @@ function Update() {
           break;
         case constants.config.GENERAL_KEYBINDING:
           // TODO: Something else here
-           models[0].translationVector[0] += 0.25;
+          // "jitter" the cubes by adding and subtracting a random offset to all cubes X,Y,Z positions
+           models.forEach(model => {
+            model.translationVector[0] += Math.random();
+            model.translationVector[1] += Math.random();
+            model.translationVector[2] += Math.random();
+
+            model.translationVector[0] -= Math.random();
+            model.translationVector[1] -= Math.random();
+            model.translationVector[2] -= Math.random();
+          });
           break;
         default:
           break;
