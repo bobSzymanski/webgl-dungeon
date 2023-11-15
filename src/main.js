@@ -12,9 +12,9 @@ import cubeModels from '../models/basicCube.js';
 const default_FOV = 70;
 const default_near_Z = 0.1;
 const default_far_z = 100;
-const default_aspect_ratio = 800 / 600;
-const default_width = 800;
-const default_height = 600;
+const default_aspect_ratio = 1440 / 697;
+const default_width = 1440; // I know
+const default_height = 697; // My Mac is weird
 
 let requestId;
 let shaderProgram;
@@ -194,7 +194,7 @@ function contextGained(event) {
 function handleRightClick(event) {
   //button === 2 is from stack overflow, I'm guessing that refers to right-click being mouse button 2.
   if (event.button === 2) {
-    e.preventDefault();
+    event.preventDefault();
     return false;
   }
 }

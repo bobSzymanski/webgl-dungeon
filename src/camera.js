@@ -93,6 +93,9 @@ export function Initialize() {
 }
 
 export function UpdateCamera() {
+
+
+  /////// TODO: How much of this actually needs to happen every frame????
   cameraRotation = glMatrix.mat4.create();
   const upDownRotationMatrix = glMatrix.mat4.create();
   const leftRightRotationMatrix = glMatrix.mat4.create();
