@@ -5,8 +5,8 @@ import constants from './constants';
 import glMatrix from './extern/gl-matrix.js';
 import keyBindings from'./keybinds';
 import log from './logger';
-import VERTEX_SHADER_SOURCE from './shaders/vertexShader.glsl';
-import FRAGMENT_SHADER_SOURCE from './shaders/fragmentShader.glsl';
+import shaderHandler from './shaders/shaderHandler';
+import textureHandler from './textures/textureHandler';
 import cubeModels from '../models/basicCube.js';
 
 const default_FOV = 70;
@@ -27,8 +27,6 @@ let pUniform, mvUniform;
 // Instance Variables:
 let canvas;
 let gl;
-let windowWidth = default_width; // The canvas size is initialized in index.html !!!
-let windowHeight = default_height;
 let windowAspectRatio = default_aspect_ratio;
 let projectionMatrix = glMatrix.mat4.create();
 let projectionMatrixFlat;
@@ -38,44 +36,37 @@ const models = [];
 
 let textNode;
 
+
+/* To follow the pattern from XNA, we do the following:
+
+1) Initialize (Start)
+2) LoadContent
+3) Update
+4) Draw
+
+Every frame, we call Update, then Draw, just like XNA. That should occur every 1/60th of a second.
+*/
+
 /** Start ()
  * Entry point to our JS code. It is called at the very bottom of this script.
  * @return Promise (async)
  */
 async function Start() {
   canvas = document.getElementById('glcanvas');
-
   initWebGL(canvas); // Create the GL object
-  
+
   if (!gl) {
     log(constants.config.WEBGL_UNSUPPORTED_ERR);
     return;
   }
 
+  setResolution(default_width, default_height); // Set up the canvas at the proper resolution.
+  ({ shaderProgram, vertexPositionAttribute, textureCoordAttribute } = shaderHandler.initShaders(gl)); // Load & compile our shader programs
   setGLContext(); //  Initialize the GL context
-  setGLContextHandlers(); // Add callbacks when GL context is lost or regained
+  addCanvasEventListeners(); // Add event listeners to the canvas object.
   createBaseCubeVertexBuffers(); // For now, this creates our first cube.
   await LoadContent(); // Loads textures, etc. uses async/await.
-  Update();
-}
-
-function contextLost(event) {
-  log('Lost web context!');
-  log(event);
-  event.preventDefault();
-  cancelAnimationFrame(requestId);
-}
-
-function contextGained(event) {
-  log('Regained webgl context!');
-  log(event);
-  initWebGL();
-  setGLContext();
-}
-
-function setGLContextHandlers() {
-  canvas.addEventListener('webglcontextlost', contextLost, false);
-  canvas.addEventListener('webglcontextrestored', contextGained, false);
+  Update(); // Update Game logic
 }
 
 /**
@@ -88,24 +79,13 @@ async function LoadContent() {
   document.onkeydown = handleKeyDown;
   document.onkeyup = handleKeyUp;
 
-  await loadTextureForModel(models[0]);
+  await textureHandler.loadTextureForModel(gl, models[0]);
 
   makeCubes();
 
   // Create references to view and projection matrices in the glsl program
   pUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
   mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-}
-
-/** setResolution ( number - width, number - height)
- * Call to change the resolution of the GL canvas. Also re-sets the GL context and updates the aspect ratio.
- * @return N/A
- */
-function setResolution(width, height) {
-  canvas.width = width;
-  canvas.height = height;
-  windowAspectRatio = width / height;
-  setGLContext();
 }
 
 /** Update:
@@ -184,27 +164,45 @@ function Draw() {
   }
 }
 
-/** loadTextureForModel:
- * loads the texture file as described in the model
+/** setResolution ( number - width, number - height)
+ * Call to change the resolution of the GL canvas.
+ * Also re-sets the GL viewport, updates the aspect ratio, and projection matrix.
  * @return N/A
  */
-async function loadTextureForModel(model) {
-  return new Promise((success, failure) => {
-    Object.assign(model, { textureBinding: gl.createTexture() });
-    const img = new Image();
-    // Always define onload func first, then set src property.
-    img.onload = function () { // eslint-disable-line
-      handleTextureLoaded(img, model.textureBinding, model);
-      return success();
-    };
+function setResolution(width, height) {
+  canvas.width = width;
+  canvas.height = height;
+  windowAspectRatio = width / height;
+  gl.viewport(0, 0, width, height);
+  setupProjectionMatrix();
+}
 
-    img.onerror = function () { // eslint-disable-line
-      log(`Error loading texture: ${img.src}`);
-      return failure();
-    };
+function contextLost(event) {
+  log('Lost web context!');
+  log(event);
+  event.preventDefault();
+  cancelAnimationFrame(requestId);
+}
 
-    img.src = model.textureSourceFile;
-  });
+function contextGained(event) {
+  log('Regained webgl context!');
+  log(event);
+  initWebGL();
+  setGLContext();
+}
+
+function handleRightClick(event) {
+  //button === 2 is from stack overflow, I'm guessing that refers to right-click being mouse button 2.
+  if (event.button === 2) {
+    e.preventDefault();
+    return false;
+  }
+}
+
+function addCanvasEventListeners() {
+  canvas.addEventListener('webglcontextlost', contextLost, false);
+  canvas.addEventListener('webglcontextrestored', contextGained, false);
+  canvas.addEventListener('contextmenu', handleRightClick, false);
 }
 
 /**
@@ -216,7 +214,7 @@ function initWebGL() {
 
   try {
     gl = canvas.getContext(constants.config.WEBGL_CANVAS_CONTEXT);
-    log(`Canvas dimensions: ${canvas.width}, ${canvas.height}`);
+    gl_ex = gl.getExtension('WEBGL_lose_context'); // Prep for losing context.
   } catch (e) {
     log(constants.config.WEBGL_CREATION_ERR);
   }
@@ -235,9 +233,9 @@ function setGLContext() {
   gl.depthFunc(gl.LEQUAL); // Near things obscure far things
   gl.enable(gl.CULL_FACE); // These two lines enable culling,
   gl.cullFace(gl.BACK); // and we set the mode to BACK face culling.
+}
 
-  initShaders();
-
+function setupProjectionMatrix() {
   // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
   projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
     windowAspectRatio,
@@ -245,7 +243,6 @@ function setGLContext() {
     default_far_z);
 
   projectionMatrixFlat = new Float32Array(projectionMatrix.flatten());
-  gl_ex = gl.getExtension('WEBGL_lose_context'); // Prep for losing context.
 }
 
 function setMatrixUniforms() {
@@ -264,50 +261,6 @@ function handleKeyDown(event) {
 function handleKeyUp(event) {
   pressedKeys[event.keyCode] = false;
 }
-
-/**
-* initShaders initializes our GLSL, compiles it from source, and attaches it.
-* Since we use webpack-glsl-loader, the GLSL source files can be imported just like any other JS file.
-* @return: N/A
-*/
-function initShaders() {
-  const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vertexShader, VERTEX_SHADER_SOURCE);
-  gl.compileShader(vertexShader);
-  const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fragmentShader, FRAGMENT_SHADER_SOURCE);
-  gl.compileShader(fragmentShader);
-
-  // Create the shader program
-  shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-  gl.validateProgram(shaderProgram);
-
-  // If creating the shader program failed, alert
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS) && !gl.isContextLost()) {
-    throw new Error('Unable to initialize the shader program!');
-  }
-
-  // Check the state of the vertex and fragment shaders:
-  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-    throw `Failed to compile vertex shader: ${gl.getShaderInfoLog(vertexShader)}`;
-  }
-
-  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-    throw `Failed to compile vertex shader: ${gl.getShaderInfoLog(fragmentShader)}`;
-  }
-
-  gl.useProgram(shaderProgram);
-
-  vertexPositionAttribute = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
-  gl.enableVertexAttribArray(vertexPositionAttribute);
-
-  textureCoordAttribute = gl.getAttribLocation(shaderProgram, 'aTextureCoord');
-  gl.enableVertexAttribArray(textureCoordAttribute);
-}
-
 
 function createBaseCubeVertexBuffers() {
   models.length = 0; // Neat way of emptying a const array reference.
@@ -382,17 +335,6 @@ function makeCubes() { // eslint-disable-line
       models.push(toAdd);
     }
   }
-}
-
-function handleTextureLoaded(image, texture, model) {
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-  gl.generateMipmap(gl.TEXTURE_2D);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-
-  Object.assign(model, { textureBinding: texture });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
