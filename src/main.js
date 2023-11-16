@@ -86,6 +86,8 @@ async function LoadContent() {
   // Create references to view and projection matrices in the glsl program
   pUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
   mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
+
+  fixResolutionBug();
 }
 
 /** Update:
@@ -335,6 +337,20 @@ function makeCubes() { // eslint-disable-line
       models.push(toAdd);
     }
   }
+}
+
+/* After months of tracking down this weird perspective glitch, I have
+* finally found a solution. And to me, it makes no sense... but it works.
+* It seems like a race condition - some times the app loads and the perspective is wrong, and the movement
+* doesn't seem to line up correctly. Doing this seems to fix it. It doesn't matter how many times I set the resolution
+* to what I want, unless I change it to something else first. Then when I change the resolution to what I want,
+* the perspective is corrected as it should be.
+*/
+function fixResolutionBug() {
+  canvas.width = 800;
+  canvas.height = 600;
+  canvas.width = default_width;
+  canvas.height = default_height;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
