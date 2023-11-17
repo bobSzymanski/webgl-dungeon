@@ -235,6 +235,11 @@ function setGLContext() {
   gl.depthFunc(gl.LEQUAL); // Near things obscure far things
   gl.enable(gl.CULL_FACE); // These two lines enable culling,
   gl.cullFace(gl.BACK); // and we set the mode to BACK face culling.
+
+  gl.enable(gl.BLEND); // Enable blending
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // Set the proper alhpa blending choice
+  // Be careful with above - yes we've allowed transparency, but with backface culling, if you can see
+  // into an object, it still won't render the backside unless it's defined in geometry to show that way.
 }
 
 function setupProjectionMatrix() {
@@ -322,11 +327,9 @@ function makeCubes() { // eslint-disable-line
       gl.bindBuffer(gl.ARRAY_BUFFER, toAdd.vertexBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(toAdd.vertices), gl.STATIC_DRAW);
 
-
       gl.bindBuffer(gl.ARRAY_BUFFER, toAdd.textureCoordBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(toAdd.textureMap),
         gl.STATIC_DRAW);
-
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, toAdd.indexBuffer);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
