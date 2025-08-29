@@ -1,7 +1,11 @@
-module.exports = {
+export default {
   "entry": "./src/main.js",
+  "resolve": {
+    "fallback": {
+      "crypto": false
+    }
+  },
   "output": {
-    "path": __dirname,
     "filename": "bin/bundle.js"
   },
   "module": {

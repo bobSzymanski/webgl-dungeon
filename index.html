@@ -1,21 +1,34 @@
-
+<!DOCTYPE html>
 <html>
   <head>
     <title>WebGL - Hello World!</title>
     <link rel="stylesheet" type="text/css" href="basic.css">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <script src="src/extern/sylvester.js" type="text/javascript"></script>
     <script src="src/extern/glUtils.js" type="text/javascript"></script>
-    <script src="bin/bundle.js" type="text/javascript"></script>
+    <script src="dist/bin/bundle.js" type="text/javascript"></script>
+  </head>
 
-    <!-- Fragment shader program -->
-    <!-- <script id="shader-fs" type="x-shader/x-fragment"></script> -->
-    <!-- Vertex shader program -->
-    <!-- <script id="shader-vs" type="x-shader/x-vertex"></script> -->
-  </head>      
-  
   <body>
-      <div class="container">
+      <div class="container" id="gameContainer">
+        <div style="display: none" id="battleoverlay">
+          <div id="monsterarea">
+          </div>
+          <div id="battleactionsarea">
+            <button id="attackbutton" class="battleactionbutton">Attack</button>
+            <button id="skillbutton" class="battleactionbutton">Skills</button>
+            <button id="specialbutton" class="battleactionbutton">Special</button>
+            <button id="magicbutton" class="battleactionbutton">Magic</button>
+            <button id="itembutton" class="battleactionbutton">Item</button>
+            <button id="runbutton" class="battleactionbutton">Run</button>
+          </div>
+          <div id="heroarea">
+            <div class="herospot" id="herospot1">>BIGZEE   |  (CLASS)      |  50/50 HP  | 10/10 MP | Status: OK |</div>
+            <div class="herospot" id="herospot2"> HOGAR    |  (CLASS)      |  30/30 HP  | 20/20 MP | Status: OK |</div>
+            <div class="herospot" id="herospot3"> STABBY   |  (CLASS)      |  30/30 HP  | 10/10 MP | Status: OK |</div>
+            <div class="herospot" id="herospot4"> BERTOMUS |  (CLASS)      |  20/20 HP  | 40/40 MP | Status: OK |</div>
+          </div>
+        </div>
         <canvas id="glcanvas">Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.</canvas>
         <canvas id="overlayCanvas"></canvas>
         <div id="overlay">

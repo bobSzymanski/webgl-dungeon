@@ -33,7 +33,7 @@ export function initShaders(gl) {
   }
 
   if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-    throw `Failed to compile vertex shader: ${gl.getShaderInfoLog(fragmentShader)}`;
+    throw `Failed to compile fragment shader: ${gl.getShaderInfoLog(fragmentShader)}`;
   }
 
   gl.useProgram(shaderProgram);

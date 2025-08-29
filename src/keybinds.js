@@ -1,4 +1,4 @@
-import constants from './constants';
+import constants from './constants.js';
 
 /* keybinds have 3 properties:
  name - describes what the keybind does
@@ -18,7 +18,10 @@ let keybinds = [
   { name: constants.config.RAISE_CAM, key: constants.config.ASCII_SPACE, type: constants.config.CAMERA_ACTION  },
   { name: constants.config.LOWER_CAM, key: constants.config.ASCII_LSHIFT, type: constants.config.CAMERA_ACTION  },
   { name: constants.config.REFRESH, key: constants.config.ASCII_L, type: constants.config.GENERAL_KEYBINDING  },
-  { name: constants.config.EXIT, key: constants.config.ASCII_ESCAPE, type: constants.config.ENGINE_KEYBINDS  },
+  { name: constants.config.TESTACTION1, key: constants.config.ASCII_K, type: constants.config.GENERAL_KEYBINDING  },
+  { name: constants.config.TESTACTION2, key: constants.config.ASCII_M, type: constants.config.GENERAL_KEYBINDING  },
+  { name: constants.config.TESTACTION3, key: constants.config.ASCII_J, type: constants.config.GENERAL_KEYBINDING  },
+  { name: constants.config.EXIT, key: constants.config.ASCII_ESCAPE, type: constants.config.ENGINE_KEYBINDS  }
 ];
 
 export function setBinding(binding, newKey) {

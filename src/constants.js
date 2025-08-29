@@ -8,13 +8,19 @@ const config = {
   WEBGL_UNSUPPORTED_ERR: 'Error initializing WebGL! Please esure your browser is compatible.',
   WEBGL_CREATION_ERR: 'Error creating WebGL device!',
   WEBGL_CANVAS_CONTEXT: 'webgl', //'experimental-webgl',
+  MOUSEBUTTON_LEFT_CLICK: 0,
+  MOUSEBUTTON_RIGHT_CLICK: 2,
+  MOUSTBUTTON_MOUSEWHEEL_CLICK: 1,
 
   // Default key bindings:
   ASCII_W: 87,
   ASCII_S: 83,
   ASCII_A: 65,
   ASCII_D: 68,
+  ASCII_J: 74,
+  ASCII_K: 75,
   ASCII_L: 76,
+  ASCII_M: 77,
   ASCII_UP: 38,
   ASCII_DOWN: 40,
   ASCII_LEFT: 37,
@@ -40,6 +46,9 @@ const config = {
 
   // General Actions:
   REFRESH: 'REFRESH',
+  TESTACTION1: 'TESTACTION1',
+  TESTACTION2: 'TESTACTION2',
+  TESTACTION3: 'TESTACTION3',
 
   // Engine Actions:
   EXIT: 'EXIT',
@@ -47,7 +56,16 @@ const config = {
   // Action types:
   CAMERA_ACTION: 'CAMERA_ACTION',
   GENERAL_KEYBINDING: 'GENERAL',
-  ENGINE_KEYBINDS: 'ENGINE'
+  ENGINE_KEYBINDS: 'ENGINE',
+  HERO_BOUNDINGBOX_XRADIUS: 0.20,
+  HERO_BOUNDINGBOX_YRADIUS: 0.20,
+  HERO_BOUNDINGBOX_ZRADIUS: 0.20,
+
+  BATTLE_RUN_DEBOUNCE_FRAME_MAX: 120,
+  BATTLE_RUN_DEBOUNCE_FLICKER_DIVISOR: 10,
+  BATTLE_RUN_DEBOUNCE_FLICKER_TARGET: 5,
+  GAME_TICKS_PER_SECOND: 60
+
 };
 
 export default { config };

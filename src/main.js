@@ -1,13 +1,18 @@
-import jQuery from 'jquery';
-
-import camera from './camera';
-import constants from './constants';
-import glMatrix from './extern/gl-matrix.js';
-import keyBindings from'./keybinds';
-import log from './logger';
-import shaderHandler from './shaders/shaderHandler';
-import textureHandler from './textures/textureHandler';
-import cubeModels from '../models/basicCube.js';
+import camera from './camera.js';
+import constants from './constants.js';
+import drawUtils from './drawUtils.js';
+import soundHandler from './soundHandler.js';
+import keyBindings from'./keybinds.js';
+import log from './logger.js';
+import map from './map.js';
+import battleUtils from './battle.js';
+import bobMath from './bobMath.js';
+import linearAlgebra from './linearAlgebra.js';
+import modelUtils from './modelUtils.js';
+import monsterUtils from './monsterUtils.js';
+import shaderHandler from './shaders/shaderHandler.js';
+import textureHandler from './textureHandler.js';
+import stringUtils from './stringUtils.js';
 
 const default_FOV = 70;
 const default_near_Z = 0.1;
@@ -16,26 +21,47 @@ const default_aspect_ratio = 1440 / 697;
 const default_width = 1440; // I know
 const default_height = 697; // My Mac is weird
 
+let updateTime = 0;
+let drawTime = 0;
+let largestUpdateTime = 0;
+let largestDrawTime = 0;
 let requestId;
 let shaderProgram;
 let vertexPositionAttribute;
 let vertexTranslationAttribute;
 let textureCoordAttribute;
 let gl_ex;
-let pUniform, mvUniform;
+let projectionMatrixUniform, viewMatrixUniform, worldMatrixUniform;
+let cameraPositionUniform, ambientLightUniform, torchIntensityUniform;
+let pressed = false;
+let debounceFrameCounter = 0;
+let debounceFrameTotal = 20;
+let debouncing = false;
+let upDownRotation = 0;
+let leftRightRotation = 0;
+const rotationAmount = 0.02;
+let mouseSensitivity = 0.0115; // TODO - determine reasonable scale
+let battleFrameDebounceCount = 0;
+let gameTicks = 0;
+let torchIntensity = 1.0;
+const ambientLightVector3 = [ 0.02, 0.02, 0.02 ];
 
 // Instance Variables:
 let canvas;
 let gl;
 let windowAspectRatio = default_aspect_ratio;
-let projectionMatrix = glMatrix.mat4.create();
+let projectionMatrix = linearAlgebra.mat4Create();
 let projectionMatrixFlat;
-const pressedKeys = {};
+let inBattle = false;
 
-const models = [];
+const pressedKeys = {};
+const mouseState = {};
+const previousMouseState = {};
 
 let textNode;
 
+const toggleCount = 120;
+let toggleAmount = 0;
 
 /* To follow the pattern from XNA, we do the following:
 
@@ -44,7 +70,8 @@ let textNode;
 3) Update
 4) Draw
 
-Every frame, we call Update, then Draw, just like XNA. That should occur every 1/60th of a second.
+Every frame, we call Update, then Draw, just like XNA. That should occur every 1/60th of a second. (16.67ms)
+My initial benchmarking using Performance.now shows Update and Draw calls happening in under 1 millisecond each.
 */
 
 /** Start ()
@@ -60,12 +87,13 @@ async function Start() {
     return;
   }
 
+  log('By the way, I see a 50% reduction in CPU usage in Firefox vs. Google Chrome on this 2014 Macbook Pro...');
   setResolution(default_width, default_height); // Set up the canvas at the proper resolution.
   ({ shaderProgram, vertexPositionAttribute, textureCoordAttribute } = shaderHandler.initShaders(gl)); // Load & compile our shader programs
   setGLContext(); //  Initialize the GL context
   addCanvasEventListeners(); // Add event listeners to the canvas object.
-  createBaseCubeVertexBuffers(); // For now, this creates our first cube.
   await LoadContent(); // Loads textures, etc. uses async/await.
+  createMouseLockEventListener(); // Attempt to capture the mouse.
   Update(); // Update Game logic
 }
 
@@ -79,15 +107,56 @@ async function LoadContent() {
   document.onkeydown = handleKeyDown;
   document.onkeyup = handleKeyUp;
 
-  await textureHandler.loadTextureForModel(gl, models[0]);
-
-  makeCubes();
-
   // Create references to view and projection matrices in the glsl program
-  pUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
-  mvUniform = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
+  projectionMatrixUniform = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+  viewMatrixUniform = gl.getUniformLocation(shaderProgram, 'uVMatrix');
+  worldMatrixUniform = gl.getUniformLocation(shaderProgram, 'uWMatrix');
 
-  fixResolutionBug();
+  // Create references to uniforms and attributes in the shader:
+  ambientLightUniform = gl.getUniformLocation(shaderProgram, 'uAmbientLight');
+  cameraPositionUniform = gl.getUniformLocation(shaderProgram, 'uCameraPosition');
+  torchIntensityUniform = gl.getUniformLocation(shaderProgram, 'uTorchIntensity');
+
+  vertexTranslationAttribute = gl.getAttribLocation(shaderProgram, 'aVertexTranslation');
+
+  fixResolutionBug(); // I'm still not convinced this works...
+  await map.initMap(gl, 'town01');
+
+  soundHandler.init();
+  await soundHandler.loadSound('./content/sounds/wotes-town.mp3');
+  await soundHandler.loadSound('./content/sounds/grunt2.ogg');
+
+  const crate = await modelUtils.createModel(gl, 'baseCube');
+  crate.translationVector = [ 4.5, 4.5, 0 ];
+  map.getModels().push(crate);
+
+  const stair = await modelUtils.createModel(gl, 'staircase');
+  stair.translationVector = [ 2, 2, 0 ];
+  map.getModels().push(stair);
+
+  // This is supposed to show the way the user is pointing. It translates, but does not yet rotate.
+  //map.getModels().push(await modelUtils.createModel(gl, 'XYArrow'));
+
+  drawUtils.init(worldMatrixUniform,
+    vertexPositionAttribute,
+    textureCoordAttribute,
+    vertexTranslationAttribute,
+    shaderProgram);
+
+  battleUtils.setupBattleButtons();
+
+  ambientLightVector3[0] = map.getAmbientLightIntensity();
+  ambientLightVector3[1] = map.getAmbientLightIntensity();
+  ambientLightVector3[2] = map.getAmbientLightIntensity();
+
+
+  // Set the default ambient light - it probably doesn't need to change... does it?
+  gl.uniform3f(ambientLightUniform,
+    ambientLightVector3[0],
+    ambientLightVector3[1],
+    ambientLightVector3[2]);
+
+  gl.uniform1f(torchIntensityUniform, torchIntensity.toFixed(3));
 }
 
 /** Update:
@@ -95,26 +164,49 @@ async function LoadContent() {
  * @return N/A
  */
 function Update() {
+  const startTime = performance.now();
+  fixResolutionBug();
   Object.keys(pressedKeys).forEach((button) => {
     if (pressedKeys[button]) { // If the button was pressed...
       const keybinding = keyBindings.getKeyBinding(button); // See if it has a keybinding...
       if (!keybinding) { return; } // If not - go to the next pressedKey.
       switch (keybinding.type) { // Do different things for diff keybinds
         case constants.config.CAMERA_ACTION:
-          camera.Action(keybinding.name);
+          if (battleUtils.getIsInBattle() == false) {
+            camera.Action(keybinding.name, map);
+          }
+
           break;
         case constants.config.GENERAL_KEYBINDING:
           // TODO: Something else here
-          // "jitter" the cubes by adding and subtracting a random offset to all cubes X,Y,Z positions
-           models.forEach(model => {
-            model.translationVector[0] += Math.random();
-            model.translationVector[1] += Math.random();
-            model.translationVector[2] += Math.random();
+          if (!debouncing && button == constants.config.ASCII_L) {
+            debouncing = true;
+            soundHandler.playSound("./content/sounds/wotes-town.mp3", true);
+          }
 
-            model.translationVector[0] -= Math.random();
-            model.translationVector[1] -= Math.random();
-            model.translationVector[2] -= Math.random();
-          });
+          if (!debouncing && button == constants.config.ASCII_K) {
+            debouncing = true;
+            const cube = map.getModels().find((model) => model.name === 'cube');
+            if (cube) {
+              soundHandler.playSound("./content/sounds/grunt2.ogg", false, cube.translationVector);
+            }
+          }
+
+          if (!debouncing && button == constants.config.ASCII_M) {
+            debouncing = true;
+            soundHandler.stopSong();
+            loadMap('dungeon01');
+          }
+
+          if (!debouncing && button == constants.config.ASCII_J) {
+            debouncing = true;
+            //toggleFullScreen();
+            //fullScreen(canvas);
+            // if (battleUtils.getIsInBattle() == false) {
+            //   battleUtils.startBattle();
+            // }
+          }
+
           break;
         default:
           break;
@@ -122,10 +214,81 @@ function Update() {
     }
   });
 
-  // Then draw the frame
+  if (debouncing) {
+    debounceFrameCounter+= 1;
+    if (debounceFrameCounter >= debounceFrameTotal) {
+      debounceFrameCounter = 0;
+      debouncing = false;
+    }
+  }
+
+  // TODO: Where should this happen during the update call? At the end?
   camera.UpdateCamera();
   textNode.nodeValue = camera.GetPositionString();
+  textNode.nodeValue += ` slowest update: ${largestUpdateTime.toFixed(3)}, slowest draw: ${largestDrawTime.toFixed(3)}`;
+  soundHandler.updatePlayer(camera.getPositionVector(), camera.getForwardVector(), [0,0,1]);
+
+  // Jan 2025 - I don't remember what pointer is and I don't believe this is used.
+  const pointArrow = map.getModels().find((model) => model.name === 'pointer');
+  if (pointArrow) { // If the user pointer is drawn, move it underneath the player.
+    pointArrow.translationVector[0] = camera.getPositionVector()[0] - 0.5;
+    pointArrow.translationVector[1] = camera.getPositionVector()[1];
+    pointArrow.translationVector[2] = camera.getPositionVector()[2] - 0.5;
+  }
+
+  const cube = map.getModels().find((model) => model.name === 'cube');
+  if (cube) { // If the sample cube is to be drawn, rotate it around a bit.
+    modelUtils.rotateLeftRightByAmount(cube, 0.02);
+    modelUtils.rotateUpDownByAmount(cube, 0.02);
+  }
+
+  // Handle monsterGroup stuff:
+  if (battleUtils.getIsInBattle() == false) {
+    const worldMonsterGroups = map.getWorldMonsterGroups();
+    for (var i = 0; i < worldMonsterGroups.length; i++) {
+      // Also, update the flicker rate:
+      if (worldMonsterGroups[i].debouncing == true) {
+        worldMonsterGroups[i].debounceCount += 1;
+        if (worldMonsterGroups[i].debounceCount >= constants.config.BATTLE_RUN_DEBOUNCE_FRAME_MAX) {
+          worldMonsterGroups[i].debounceCount = 0;
+          worldMonsterGroups[i].debouncing = false;
+        }
+      }
+
+      // Also, update the models to face the player:
+      const wm = worldMonsterGroups[i].worldMonsterObject.model;
+      modelUtils.rotateToFaceCamera(gl, wm, camera);
+    }
+
+    if (map.didBattleBump()) {
+      // We bumped into a monster. Start the battle if it's not debouncing.
+      const i = map.getBumpedBattleIndex();
+      if (worldMonsterGroups[i].enabled == true && worldMonsterGroups[i].debouncing == false) {
+        battleUtils.startBattle(worldMonsterGroups[i]);
+      }
+    }
+  } // end of 'is in battle' == false
+
+  gl.uniform1f(torchIntensityUniform, torchIntensity.toFixed(3));
+
+
+  gameTicks += 1;
+  if (gameTicks >= constants.config.GAME_TICKS_PER_SECOND) { gameTicks = 0; }
+
+  const endTime = performance.now();
+  updateTime = endTime - startTime;
+  // Then draw the frame
   Draw();
+  const drawEndTime = performance.now();
+  drawTime = drawEndTime - endTime;
+
+  if (updateTime > largestUpdateTime) {
+    largestUpdateTime = updateTime;
+  }
+
+  if (drawTime > largestDrawTime) {
+    largestDrawTime = drawTime;
+  }
 
   // Rinse and repeat
   requestId = requestAnimationFrame(Update, canvas);
@@ -140,29 +303,24 @@ function Draw() {
   setMatrixUniforms();
 
   // For each model, set the vertices, texture, etc, then draw them.
+  const models = map.getModels();
+  const worldMonsterGroups = map.getWorldMonsterGroups();
   for (let i = 0; i < models.length; i++) {
-    // Bind the vertex, index, and texture coordinate data
-    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].vertexBuffer);
-    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+    drawUtils.drawModel(gl, models[i]);
+  }
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, models[i].textureCoordBuffer);
-    gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+  for (let i = 0; i < worldMonsterGroups.length; i++) {
+    if (worldMonsterGroups[i].enabled == true ) {
+      if (worldMonsterGroups[i].debouncing == false) {
+        drawUtils.drawModel(gl, worldMonsterGroups[i].worldMonsterObject.model);
+        continue;
+      }
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, models[i].indexBuffer);
-
-    // Pass translation vector to the shader:
-    gl.uniform3f(gl.getUniformLocation(shaderProgram, 'aVertexTranslation'),
-      models[i].translationVector[0],
-      models[i].translationVector[1],
-      models[i].translationVector[2]);
-
-    // Bind the current texture data
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, models[i].textureBinding);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, 'uSampler'), 0);
-
-    // Draw the model.
-    gl.drawElements(gl.TRIANGLES, models[i].indices.length, gl.UNSIGNED_SHORT, 0);
+      // In this case, the model is alive, but debouncing. Flicker it on some interval
+      if (worldMonsterGroups[i].debounceCount % constants.config.BATTLE_RUN_DEBOUNCE_FLICKER_DIVISOR <= constants.config.BATTLE_RUN_DEBOUNCE_FLICKER_TARGET) {
+        drawUtils.drawModel(gl, worldMonsterGroups[i].worldMonsterObject.model);
+      }
+    }
   }
 }
 
@@ -244,7 +402,7 @@ function setGLContext() {
 
 function setupProjectionMatrix() {
   // makePerspective => (out, FOV, Aspect Ratio, near Z index, far Z index);
-  projectionMatrix = makePerspective(default_FOV, // eslint-disable-line 
+  projectionMatrix = makePerspective(default_FOV, // eslint-disable-line
     windowAspectRatio,
     default_near_Z,
     default_far_z);
@@ -254,8 +412,20 @@ function setupProjectionMatrix() {
 
 function setMatrixUniforms() {
   // Set the projection, and then the view matrix.
-  gl.uniformMatrix4fv(pUniform, false, projectionMatrixFlat);
-  gl.uniformMatrix4fv(mvUniform, false, camera.GetViewMatrix());
+  gl.uniformMatrix4fv(projectionMatrixUniform, false, projectionMatrixFlat);
+  gl.uniformMatrix4fv(viewMatrixUniform, false, camera.GetViewMatrix());
+  // Also set the camera position attribute:
+  const cameraPosition = camera.getPositionVector();
+  gl.uniform3f(cameraPositionUniform,
+    cameraPosition[0],
+    cameraPosition[1],
+    cameraPosition[2]);
+
+  gl.uniform3f(ambientLightUniform,
+    ambientLightVector3[0],
+    ambientLightVector3[1],
+    ambientLightVector3[2]);
+
 }
 
 function handleKeyDown(event) {
@@ -269,91 +439,95 @@ function handleKeyUp(event) {
   pressedKeys[event.keyCode] = false;
 }
 
-function createBaseCubeVertexBuffers() {
-  models.length = 0; // Neat way of emptying a const array reference.
-  let cubeCopy = {};
-  cubeCopy = jQuery.extend(true, {}, cubeModels.baseCube);
-
-  // Now we translate the cube copy over by 1 coordinate in each direction.
-  for (let i = 0; i < cubeCopy.vertices.length; i++) {
-    cubeCopy.vertices[i] += 1;
-  }
-
-  cubeCopy.vertexBuffer = gl.createBuffer();
-  cubeCopy.indexBuffer = gl.createBuffer();
-  cubeCopy.textureCoordBuffer = gl.createBuffer();
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeCopy.vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeCopy.vertices), gl.STATIC_DRAW);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeCopy.textureCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeCopy.textureMap),
-    gl.STATIC_DRAW);
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeCopy.indexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-    new Uint16Array(cubeCopy.indices), gl.STATIC_DRAW);
-
-  cubeCopy.translationVector = glMatrix.vec3.fromValues(0, 0, 0);
-
-  models.push(cubeCopy);
-}
-
-function makeCubes() { // eslint-disable-line
-  for (let y = 1; y < 11; y++) { // We already draw a cube at index 0, so just start with a translation of 1.
-    for (let i = 1; i < 11; i++) { // Therefore, looping 1 -> 11 makes  10 rows of cubes.
-      let toAdd = {};
-      const randomOffset = Math.floor(Math.random() * 5); // Make each cube have a random height offset. 
-      toAdd = jQuery.extend(true, {}, models[0]);
-
-      // Every THIRD item in the array will correspond to the same coordinate of the next vertex.
-      // ie. [0] = vertex1.x, [1] = vertex1.y, [2] = vertex1.z, [3] = vertex2.x, [4] = vertex2.y, etc.
-      for (let j = 0; j < models[0].vertices.length; j += 3) { // Shift cubes in the X direction
-        toAdd.vertices[j] += i;
+function handleMouseDown(event) {
+  if (event.button === constants.config.MOUSEBUTTON_LEFT_CLICK) {
+    if (debouncing == false) {
+      debouncing = true;
+      const cube = map.getModels().find((model) => model.name === 'cube');
+      if (cube) {
+        soundHandler.playSound("./content/sounds/grunt2.ogg", false, cube.translationVector);
       }
-
-      for (let j = 1; j < models[0].vertices.length; j += 3) { // Shift cubes in the Y direction
-        toAdd.vertices[j] += y;
-      }
-
-      for (let j = 2; j < models[0].vertices.length; j += 3) { // Shift cubes in the Z direction, randomly
-        toAdd.vertices[j] += randomOffset;
-      }
-
-      toAdd.vertexBuffer = gl.createBuffer();
-      toAdd.indexBuffer = gl.createBuffer();
-      toAdd.textureCoordBuffer = gl.createBuffer();
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, toAdd.vertexBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(toAdd.vertices), gl.STATIC_DRAW);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, toAdd.textureCoordBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(toAdd.textureMap),
-        gl.STATIC_DRAW);
-
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, toAdd.indexBuffer);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-        new Uint16Array(toAdd.indices), gl.STATIC_DRAW);
-
-      toAdd.translationVector = glMatrix.vec3.fromValues(0, 0, 0);
-
-      models.push(toAdd);
+      //torchIntensity += 0.1;
     }
   }
+
+  if (event.button === constants.config.MOUSEBUTTON_RIGHT_CLICK) {
+  }
 }
 
-/* After months of tracking down this weird perspective glitch, I have
-* finally found a solution. And to me, it makes no sense... but it works.
+function handleMouseUp(event) {
+  //previousMouseState.dragging = false;
+}
+
+function handleMouseMove(event) {;
+  const dx = event.movementX * mouseSensitivity;
+  const dy = event.movementY * mouseSensitivity;
+  camera.rotateLeftRightByAmount(-1 * dx);
+  camera.rotateUpDownByAmount(-1 * dy);
+}
+
+async function loadMap(mapName) {
+  map.clear();
+  await map.initMap(gl, mapName);
+
+  ambientLightVector3[0] = map.getAmbientLightIntensity();
+  ambientLightVector3[1] = map.getAmbientLightIntensity();
+  ambientLightVector3[2] = map.getAmbientLightIntensity();
+
+  camera.teleportToCoordinates(0.5, 0.5, 0.5);
+}
+
+/* After months of acking down this weird perspective glitch, I have
+* finally (possibly) found a solution. And to me, it makes no sense... but it works.
 * It seems like a race condition - some times the app loads and the perspective is wrong, and the movement
 * doesn't seem to line up correctly. Doing this seems to fix it. It doesn't matter how many times I set the resolution
 * to what I want, unless I change it to something else first. Then when I change the resolution to what I want,
 * the perspective is corrected as it should be.
 */
 function fixResolutionBug() {
-  canvas.width = 800;
-  canvas.height = 600;
+  //canvas.width = 800;
+  //canvas.height = 600;
   canvas.width = default_width;
   canvas.height = default_height;
+}
+
+// See: https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
+function lockChangeAlert() {
+  if (document.pointerLockElement === canvas) {
+    document.addEventListener("mousedown", handleMouseDown, false);
+    document.addEventListener("mouseup", handleMouseUp, false);
+    document.addEventListener("mousemove", handleMouseMove, false);
+  } else {
+    document.removeEventListener("mousemove", handleMouseMove, false);
+    document.removeEventListener("mousedown", handleMouseDown, false);
+    document.removeEventListener("mouseup", handleMouseUp, false);
+  }
+}
+
+function createMouseLockEventListener() {
+  // When the user clicks the page, obtain a pointer lock on the mouse.
+  // Only attempt to request that lock if the lock is not set already (i.e document.pointerLockElement exists)
+  canvas.addEventListener("click", async () => {
+    if (!document.pointerLockElement) {
+      await canvas.requestPointerLock();
+    }
+  });
+
+  document.addEventListener("pointerlockchange", lockChangeAlert, false);
+}
+
+function toggleFullScreen () { // See https://stackoverflow.com/a/66438162
+  // Usually we can just do this on 'canvas' but with our overlays, we want the whole div to be full screen.
+  const gameContainerElement = document.getElementById('gameContainer');
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+
+  if (!fullscreenElement) {
+    if (gameContainerElement.requestFullscreen) { gameContainerElement.requestFullscreen() }
+    else if (gameContainerElement.webkitRequestFullscreen) { gameContainerElement.webkitRequestFullscreen() }
+  } else {
+    if (document.exitFullscreen) { document.exitFullscreen() }
+    else if (document.webkitExitFullscreen) { document.webkitExitFullscreen()}
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -363,6 +537,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const textElement = document.getElementById('overlayText1');
   textNode = document.createTextNode('');
   textElement.appendChild(textNode);
+
+  const textElement1 = document.getElementById('herospot1');
+  textElement1.innerHTML = stringUtils.convertSpaces(textElement1.innerHTML);
+
+  const textElement2 = document.getElementById('herospot2');
+  textElement2.innerHTML = stringUtils.convertSpaces(textElement2.innerHTML);
+
+  const textElement3 = document.getElementById('herospot3');
+  textElement3.innerHTML = stringUtils.convertSpaces(textElement3.innerHTML);
+
+  const textElement4 = document.getElementById('herospot4');
+  textElement4.innerHTML = stringUtils.convertSpaces(textElement4.innerHTML);
 
   // Now start our game.
   Start();

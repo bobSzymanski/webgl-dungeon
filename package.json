@@ -1,12 +1,14 @@
 {
   "name": "webgl-dungeon",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "description": "A webGL dungeon crawler by Bob Szymanski.",
-  "main": "index.js",
+  "main": "src/main.js",
+  "type": "module",
   "scripts": {
     "build": "rm -rf ./bin && webpack --mode=development",
-    "build:windows": "IF EXIST ./bin ( rmdir /Q /S \"./bin\") && webpack",
+    "build:windows": "IF EXIST ./bin ( rmdir /Q /S \"./bin\") ELSE (echo 'Building...') && webpack",
     "build:prod": "",
+    "se": "electron .",
     "start": "python -m SimpleHTTPServer 8080",
     "start:python3": "python -it m http.server 8080",
     "lint": "./node_modules/.bin/eslint --ext .js --env node src",
@@ -28,11 +30,13 @@
   },
   "homepage": "https://github.com/bobSzymanski/webgl-dungeon#readme",
   "devDependencies": {
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-glsl-loader": "^1.0.1"
+    "crypto-browserify": "3.12.1",
+    "electron": "37.4.0",
+    "webpack": "5.101.3",
+    "webpack-cli": "6.0.1",
+    "webpack-glsl-loader": "1.0.1"
   },
   "dependencies": {
-    "jquery": "^3.7.1"
+    "axios": "1.11.0"
   }
 }
