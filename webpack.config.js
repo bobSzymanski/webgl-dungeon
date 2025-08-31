@@ -1,4 +1,5 @@
 export default {
+  "mode": "production",
   "entry": "./src/main.js",
   "resolve": {
     "fallback": {

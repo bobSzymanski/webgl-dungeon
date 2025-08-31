@@ -2,6 +2,7 @@
 // import { randomUUID } from 'crypto';
 
 import bobMath from './bobMath.js';
+import constants from './constants.js';
 import maps from './../content/maps/maps.js';
 import monsterUtils from './monsterUtils.js';
 import modelUtils from './modelUtils.js';
@@ -19,22 +20,22 @@ let bumpedBattleIndex = 0;
 
 // See content/walls.png for the mapping.
 const norths = [ false, true, false, false,
- false, false, true, true, 
+ false, false, true, true,
  true, false, false, true,
  true, true, false, true ];
 
 const souths = [ false, false, true, false,
- false, false, true, false, 
+ false, false, true, false,
  false, true, true, true,
  false, true, true, true ];
 
 const easts = [ false, false, false, true,
- false, true, false, false, 
+ false, true, false, false,
  true, true, false, false,
  true, true, true, true ];
 
 const wests = [ false, false, false, false,
- true, true, false, true, 
+ true, true, false, true,
  false, false, true, true,
  true, false, true, true ];
 
@@ -80,7 +81,7 @@ async function parseTiles(gl, mapName) {
       await addMapGeometry(gl, 'ceiling', [currentCoord[0], currentCoord[1], 0], ceilingOverrides);
     }
 
-    currentCoord[0] += 1; // Move to the next tile, 
+    currentCoord[0] += 1; // Move to the next tile,
     if (currentCoord[0] >= mapDimension) { // If we have finished the row,
       currentCoord[1] -= 1; // Go to the next row, DOWNWARDS
       currentCoord[0] = 0; // And start over on that new row.
@@ -91,7 +92,7 @@ async function parseTiles(gl, mapName) {
 // async function addBigFloor(gl) {
 //   const overrides = {
 //     textureSourceFile: jsonBlob.floorTexture,
-//     vertices: [ 
+//     vertices: [
 //       0, mapDimension, 0,
 //       mapDimension, mapDimension, 0,
 //       mapDimension, 0, 0,
@@ -112,7 +113,7 @@ async function parseTiles(gl, mapName) {
 // async function addBigCeiling(gl) {
 //   const overrides = {
 //     textureSourceFile: jsonBlob.ceilingTexture,
-//     vertices: [ 
+//     vertices: [
 //       0, mapDimension, 1,
 //       mapDimension, mapDimension, 1,
 //       mapDimension, 0, 1,
@@ -143,7 +144,7 @@ export async function initMap(gl, mapName) {
   // Load the "tiles" for the map
   // Load the floor geometry
   // Load the ceiling geometry
-  // Load any extra map models -- objects, doors? 
+  // Load any extra map models -- objects, doors?
 
   await parseTiles(gl, mapName);
   //await addBigFloor(gl); // This kind of feels like cheating, but
@@ -173,7 +174,7 @@ export async function loadTextures(gl) {
     model.textureBinding = await textureHandler.getTextureBinding(gl, model.textureSourceFile);
   }
 }
- 
+
 // If we break this down to its own function, we can return much more quickly
 // when there are obstacles in our path
 function canMoveXDirection(position, desiredXMovement) {
@@ -209,13 +210,13 @@ function canMoveXDirection(position, desiredXMovement) {
   }
 
   if (norths[newTile] || (newTileIndex - mapDimension >= 0 && souths[jsonBlob.tiles[newTileIndex - mapDimension]])) {
-    if (position[1] - coordY > (1 - minWallDistance)) { 
+    if (position[1] - coordY > (1 - minWallDistance)) {
       return false;
     }
   }
 
   if (souths[newTile] || (newTileIndex + mapDimension < mapDimension * mapDimension && norths[jsonBlob.tiles[newTileIndex + mapDimension]])) {
-    if (position[1] - coordY < minWallDistance) { 
+    if (position[1] - coordY < minWallDistance) {
       return false;
     }
   }
@@ -259,7 +260,7 @@ function canMoveYDirection(position, desiredYMovement) {
   }
 
   if (easts[newTile] || (coordX + 1 < mapDimension && wests[jsonBlob.tiles[newTileIndex + 1]])) {
-    if (position[0] - coordX > (1 - minWallDistance)) { 
+    if (position[0] - coordX > (1 - minWallDistance)) {
       return false;
     }
   }
@@ -299,7 +300,7 @@ function collidesWithMonsterGroup(newCameraPosition) {
     if (bobMath.doesCameraCollideWithModel(newCameraPosition, worldMonsterGroups[i].worldMonsterObject.model)) {
       bumpedIntoMonster = true;
       bumpedBattleIndex = i;
-      return true; 
+      return true;
     }
   }
 
@@ -315,7 +316,7 @@ export function destroyMonsterGroup(group) {
 }
 
 export function didBattleBump() {
-  if (bumpedIntoMonster) { 
+  if (bumpedIntoMonster) {
     bumpedIntoMonster = false;
     return true;
   }
@@ -331,6 +332,23 @@ export function getAmbientLightIntensity() {
   return jsonBlob.globalAmbientLight;
 }
 
+// This function can be taken out of here when brightness control is a global setting,
+// where the global ambient light user setting is applied as an offset to the maps default
+// when the map is loaded. But for now just let the user increment value per map load and let
+// it reset so that I can play around with it from within the game.
+// Thought is to keep it in a slider from 0.01 -> 0.99 where 0.99 is unplayable mess so maybe cap it a little less
+export function incerementAmbientLightIntensity(offset) {
+  jsonBlob.globalAmbientLight += offset;
+
+  if (jsonBlob.globalAmbientLight >= constants.config.GLOBAL_MAX_AMBIENT_LIGHT) {
+    jsonBlob.globalAmbientLight = constants.config.GLOBAL_MAX_AMBIENT_LIGHT;
+  }
+
+  if (jsonBlob.globalAmbientLight <= constants.config.GLOBAL_MIN_AMBIENT_LIGHT) {
+    jsonBlob.globalAmbientLight = constants.config.GLOBAL_MIN_AMBIENT_LIGHT;
+  }
+}
+
 export function clear() {
   jsonBlob = {};
   worldMonsterGroups = [];
@@ -341,4 +359,16 @@ export function clear() {
   bumpedBattleIndex = 0;
 }
 
-export default { clear, destroyMonsterGroup, didBattleBump, getAmbientLightIntensity, getBumpedBattleIndex, getMovementCoordinates, getWorldMonsterGroups, initMap, getModels, loadTextures };
+export default {
+  clear,
+  destroyMonsterGroup,
+  didBattleBump,
+  getAmbientLightIntensity,
+  getBumpedBattleIndex,
+  getMovementCoordinates,
+  getWorldMonsterGroups,
+  incerementAmbientLightIntensity,
+  initMap,
+  getModels,
+  loadTextures
+};

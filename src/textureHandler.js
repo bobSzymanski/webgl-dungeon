@@ -1,4 +1,4 @@
-import log from './logger.js';
+import logger from './logger.js';
 
 const texturePool = [];
 
@@ -17,7 +17,7 @@ async function loadTextureFromFile(gl, imagePath) {
     };
 
     img.onerror = function () { // eslint-disable-line
-      log(`Error loading texture: ${img.src}`);
+      logger.log(`Error loading texture: ${img.src}`);
       return failure();
     };
 
@@ -41,14 +41,14 @@ export async function getTextureBinding(gl, imagePath) {
   });
 
   if (existingTextureMap) {
-    log(`Returning texture binding ${imagePath} from cache!`);
+    logger.debug(`Returning texture binding ${imagePath} from cache!`);
     return existingTextureMap.textureBinding;
   }
 
-  log(`Texture binding for ${imagePath} was not in cache, loading from file!`);
+  logger.debug(`Texture binding for ${imagePath} was not in cache, loading from file!`);
   const newBinding = await loadTextureFromFile(gl, imagePath)
   return newBinding;
-} 
+}
 
 // TODO: Probably should add a function to unload textures, but in practice
 // I would guess we will end up using < 256MB of textures

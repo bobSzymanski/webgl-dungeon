@@ -19,6 +19,19 @@ body {
   padding: 1em;
 }
 
+#cookiePopup {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  background-color: rgba(0, 0, 0, 1);
+  color: white;
+  font-family: monospace;
+  padding: 1em;
+  width: 100vw;
+  height: 100%;
+  font-size: x-large;
+}
+
 #battleoverlay {
   position: absolute;
   height: 85vh;
@@ -83,4 +96,9 @@ body {
   background: url('/content/textures/monsters/01.png') 0 0;
   display:inline-block;
   margin: 5px 3%;
+}
+
+.bigButton {
+  width: 5%;
+  height: 4%;
 }

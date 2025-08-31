@@ -10,30 +10,43 @@
   </head>
 
   <body>
-      <div class="container" id="gameContainer">
-        <div style="display: none" id="battleoverlay">
-          <div id="monsterarea">
-          </div>
-          <div id="battleactionsarea">
-            <button id="attackbutton" class="battleactionbutton">Attack</button>
-            <button id="skillbutton" class="battleactionbutton">Skills</button>
-            <button id="specialbutton" class="battleactionbutton">Special</button>
-            <button id="magicbutton" class="battleactionbutton">Magic</button>
-            <button id="itembutton" class="battleactionbutton">Item</button>
-            <button id="runbutton" class="battleactionbutton">Run</button>
-          </div>
-          <div id="heroarea">
-            <div class="herospot" id="herospot1">>BIGZEE   |  (CLASS)      |  50/50 HP  | 10/10 MP | Status: OK |</div>
-            <div class="herospot" id="herospot2"> HOGAR    |  (CLASS)      |  30/30 HP  | 20/20 MP | Status: OK |</div>
-            <div class="herospot" id="herospot3"> STABBY   |  (CLASS)      |  30/30 HP  | 10/10 MP | Status: OK |</div>
-            <div class="herospot" id="herospot4"> BERTOMUS |  (CLASS)      |  20/20 HP  | 40/40 MP | Status: OK |</div>
-          </div>
-        </div>
-        <canvas id="glcanvas">Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.</canvas>
-        <canvas id="overlayCanvas"></canvas>
-        <div id="overlay">
-          <div>Position: <span id="overlayText1"></span></div>
+    <div class="container" id="gameContainer">
+      
+      <div id="cookiePopup" style="display: none;" class="modal">
+        <div id="cookieOverlay" style="display: none;">
+          <h2>Cookie Consent</h2>
+          <p class="overlayText">In order to save user progress, controls, and all user side config, Secure, Strict cookies are used.</p>
+          <p class="overlayText">Cookies are not used to collect any personal data or any configuration unrelated to the functionality of the game.</p>
+          <p class="overlayText">By clicking "Accept" below, you consent to storing of cookies for these purposes.</p>
+          <p class="overlayText">By clicking "Reject" below, cookies will not be used and save game data will be lost once the page is closed.</p>
+          <p></p>
+          <button class="bigButton" id="acceptCookies">Accept</button>
+          <button class="bigButton" id="rejectCookies">Reject</button>
         </div>
       </div>
+      <div style="display: none" id="battleoverlay">
+        <div id="monsterarea">
+        </div>
+        <div id="battleactionsarea">
+          <button id="attackbutton" class="battleactionbutton">Attack</button>
+          <button id="skillbutton" class="battleactionbutton">Skills</button>
+          <button id="specialbutton" class="battleactionbutton">Special</button>
+          <button id="magicbutton" class="battleactionbutton">Magic</button>
+          <button id="itembutton" class="battleactionbutton">Item</button>
+          <button id="runbutton" class="battleactionbutton">Run</button>
+        </div>
+        <div id="heroarea">
+          <div class="herospot" id="herospot1">>BIGZEE   |  (CLASS)      |  50/50 HP  | 10/10 MP | Status: OK |</div>
+          <div class="herospot" id="herospot2"> HOGAR    |  (CLASS)      |  30/30 HP  | 20/20 MP | Status: OK |</div>
+          <div class="herospot" id="herospot3"> STABBY   |  (CLASS)      |  30/30 HP  | 10/10 MP | Status: OK |</div>
+          <div class="herospot" id="herospot4"> BERTOMUS |  (CLASS)      |  20/20 HP  | 40/40 MP | Status: OK |</div>
+        </div>
+      </div>
+      <canvas id="glcanvas">Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.</canvas>
+      <canvas id="overlayCanvas"></canvas>
+      <div id="overlay" style="display: none;">
+        <div>Position: <span id="overlayText1"></span></div>
+      </div>
+    </div>
   </body>
 </html>

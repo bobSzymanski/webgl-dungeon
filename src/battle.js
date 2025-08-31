@@ -8,7 +8,7 @@ let savedMonsterGroup = {};
 
 function formatStatusText() {
   // Somehow we need hero stats here, but:
-  const hero1 = { 
+  const hero1 = {
     name: 'BIGZEE',
     class: 'PROTECTOR',
     currentHP: 50,
@@ -18,7 +18,7 @@ function formatStatusText() {
     afflictions: []
   };
 
-  const hero2 = { 
+  const hero2 = {
     name: 'HOGAR',
     class: 'DOCTOR',
     currentHP: 30,
@@ -28,7 +28,7 @@ function formatStatusText() {
     afflictions: []
   };
 
-  const hero3 = { 
+  const hero3 = {
     name: 'STABBY',
     class: 'THIEF',
     currentHP: 30,
@@ -38,7 +38,7 @@ function formatStatusText() {
     afflictions: []
   };
 
-  const hero4 = { 
+  const hero4 = {
     name: 'BERTOMUS',
     class: 'WIZARD',
     currentHP: 20,
@@ -57,7 +57,7 @@ export function startBattle(monsterGroup) {
   in_battle = true;
   battleMonsters = [];
 
-    
+
   // For each monster string name, create monster objects and add them to the battleMonsters list.
   for (var i = 0; i < savedMonsterGroup.names.length; i++) {
     const rootMonster = monsters.list.find((item) => { return item.name == savedMonsterGroup.names[i]; });

@@ -1,9 +1,10 @@
 import camera from './camera.js';
 import constants from './constants.js';
+import cookies from './cookies.js';
 import drawUtils from './drawUtils.js';
 import soundHandler from './soundHandler.js';
 import keyBindings from'./keybinds.js';
-import log from './logger.js';
+import logger from './logger.js';
 import map from './map.js';
 import battleUtils from './battle.js';
 import bobMath from './bobMath.js';
@@ -17,9 +18,15 @@ import stringUtils from './stringUtils.js';
 const default_FOV = 70;
 const default_near_Z = 0.1;
 const default_far_z = 100;
-const default_aspect_ratio = 1440 / 697;
-const default_width = 1440; // I know
-const default_height = 697; // My Mac is weird
+// const default_aspect_ratio = 1440 / 697;
+// const default_width = 1440; // I know
+// const default_height = 697; // My Mac is weird
+
+const default_width = window.innerWidth;
+const default_height = window.innerHeight;
+const default_aspect_ratio = default_width / default_height;
+let currentWidth = default_width;
+let currentHeight = default_height;
 
 let updateTime = 0;
 let drawTime = 0;
@@ -33,35 +40,24 @@ let textureCoordAttribute;
 let gl_ex;
 let projectionMatrixUniform, viewMatrixUniform, worldMatrixUniform;
 let cameraPositionUniform, ambientLightUniform, torchIntensityUniform;
-let pressed = false;
 let debounceFrameCounter = 0;
 let debounceFrameTotal = 20;
 let debouncing = false;
-let upDownRotation = 0;
-let leftRightRotation = 0;
-const rotationAmount = 0.02;
 let mouseSensitivity = 0.0115; // TODO - determine reasonable scale
-let battleFrameDebounceCount = 0;
+
 let gameTicks = 0;
 let torchIntensity = 1.0;
+let wasInBattle = false;
 const ambientLightVector3 = [ 0.02, 0.02, 0.02 ];
 
-// Instance Variables:
 let canvas;
 let gl;
 let windowAspectRatio = default_aspect_ratio;
 let projectionMatrix = linearAlgebra.mat4Create();
 let projectionMatrixFlat;
-let inBattle = false;
-
 const pressedKeys = {};
-const mouseState = {};
-const previousMouseState = {};
-
 let textNode;
 
-const toggleCount = 120;
-let toggleAmount = 0;
 
 /* To follow the pattern from XNA, we do the following:
 
@@ -83,12 +79,14 @@ async function Start() {
   initWebGL(canvas); // Create the GL object
 
   if (!gl) {
-    log(constants.config.WEBGL_UNSUPPORTED_ERR);
+    logger.log(constants.config.WEBGL_UNSUPPORTED_ERR);
     return;
   }
 
-  log('By the way, I see a 50% reduction in CPU usage in Firefox vs. Google Chrome on this 2014 Macbook Pro...');
+  logger.log('By the way, I see a 50% reduction in CPU usage in Firefox vs. Google Chrome on this 2014 Macbook Pro...');
   setResolution(default_width, default_height); // Set up the canvas at the proper resolution.
+
+  currentHeight = default_height;
   ({ shaderProgram, vertexPositionAttribute, textureCoordAttribute } = shaderHandler.initShaders(gl)); // Load & compile our shader programs
   setGLContext(); //  Initialize the GL context
   addCanvasEventListeners(); // Add event listeners to the canvas object.
@@ -157,15 +155,32 @@ async function LoadContent() {
     ambientLightVector3[2]);
 
   gl.uniform1f(torchIntensityUniform, torchIntensity.toFixed(3));
+
+  cookies.initialize();
 }
 
 /** Update:
  * The main looped function of our program. Updates game logic, then draws the scene.
  * @return N/A
  */
-function Update() {
+async function Update() {
   const startTime = performance.now();
-  fixResolutionBug();
+  if (currentHeight != window.innerHeight || currentWidth != window.innerWidth) {
+    currentHeight = window.innerHeight;
+    currentWidth = window.innerWidth;
+    setResolution(currentWidth, currentHeight);
+  }
+
+  if (wasInBattle == true && battleUtils.getIsInBattle() == false) {
+    await requestPointerLock();
+  }
+
+  if (map) {
+    ambientLightVector3[0] = map.getAmbientLightIntensity();
+    ambientLightVector3[1] = map.getAmbientLightIntensity();
+    ambientLightVector3[2] = map.getAmbientLightIntensity();
+  }
+
   Object.keys(pressedKeys).forEach((button) => {
     if (pressedKeys[button]) { // If the button was pressed...
       const keybinding = keyBindings.getKeyBinding(button); // See if it has a keybinding...
@@ -198,13 +213,19 @@ function Update() {
             loadMap('dungeon01');
           }
 
-          if (!debouncing && button == constants.config.ASCII_J) {
+          if (!debouncing && button == constants.config.ASCII_EQUALS) {
             debouncing = true;
-            //toggleFullScreen();
-            //fullScreen(canvas);
-            // if (battleUtils.getIsInBattle() == false) {
-            //   battleUtils.startBattle();
-            // }
+            map.incerementAmbientLightIntensity(0.1);
+          }
+
+          if (!debouncing && button == constants.config.ASCII_MINUS) {
+            debouncing = true;
+            map.incerementAmbientLightIntensity(-0.1);
+          }
+
+          if (!debouncing && button == constants.config.ASCII_L) {
+            debouncing = true;
+            soundHandler.playSound("./content/sounds/wotes-town.mp3", true);
           }
 
           break;
@@ -290,6 +311,8 @@ function Update() {
     largestDrawTime = drawTime;
   }
 
+  wasInBattle = battleUtils.getIsInBattle(); // Tell the next frame if we were just in a battle.
+
   // Rinse and repeat
   requestId = requestAnimationFrame(Update, canvas);
 }
@@ -298,7 +321,7 @@ function Update() {
  * Draws everything to the screen, called once per frame (approx 60fps)
  * @return N/A
  */
-function Draw() {
+async function Draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   setMatrixUniforms();
 
@@ -338,15 +361,15 @@ function setResolution(width, height) {
 }
 
 function contextLost(event) {
-  log('Lost web context!');
-  log(event);
+  logger.log('WARNING: WebGL Context was lost! Event was:');
+  logger.log(event);
   event.preventDefault();
   cancelAnimationFrame(requestId);
 }
 
 function contextGained(event) {
-  log('Regained webgl context!');
-  log(event);
+  logger.log('WARNING: Regained webgl context! Event was:');
+  logger.log(event);
   initWebGL();
   setGLContext();
 }
@@ -365,6 +388,17 @@ function addCanvasEventListeners() {
   canvas.addEventListener('contextmenu', handleRightClick, false);
 }
 
+/* await requestPointerLock to capture control of the mouse when we first click on the window
+* Also do this again after we are done doing something on the UI that would have
+* caused us to lose capture of the mouse - i.e. exiting a menu, finishing a battle, etc.
+*/
+async function requestPointerLock() {
+  // Only attempt to request that lock if the lock is not set already (i.e document.pointerLockElement exists)
+  if (!document.pointerLockElement) {
+    await canvas.requestPointerLock();
+  }
+}
+
 /**
  * Initializes our gl object.
  * @return N/A
@@ -376,7 +410,7 @@ function initWebGL() {
     gl = canvas.getContext(constants.config.WEBGL_CANVAS_CONTEXT);
     gl_ex = gl.getExtension('WEBGL_lose_context'); // Prep for losing context.
   } catch (e) {
-    log(constants.config.WEBGL_CREATION_ERR);
+    logger.log(constants.config.WEBGL_CREATION_ERR);
   }
 
   if (!gl) {
@@ -506,13 +540,7 @@ function lockChangeAlert() {
 
 function createMouseLockEventListener() {
   // When the user clicks the page, obtain a pointer lock on the mouse.
-  // Only attempt to request that lock if the lock is not set already (i.e document.pointerLockElement exists)
-  canvas.addEventListener("click", async () => {
-    if (!document.pointerLockElement) {
-      await canvas.requestPointerLock();
-    }
-  });
-
+  canvas.addEventListener("click", requestPointerLock);
   document.addEventListener("pointerlockchange", lockChangeAlert, false);
 }
 
@@ -531,8 +559,6 @@ function toggleFullScreen () { // See https://stackoverflow.com/a/66438162
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  log('DOM fully loaded and parsed. Application starting...');
-
   // This is how we can overlay some text.
   const textElement = document.getElementById('overlayText1');
   textNode = document.createTextNode('');

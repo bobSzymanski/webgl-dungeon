@@ -7,10 +7,12 @@ const config = {
   },
   WEBGL_UNSUPPORTED_ERR: 'Error initializing WebGL! Please esure your browser is compatible.',
   WEBGL_CREATION_ERR: 'Error creating WebGL device!',
-  WEBGL_CANVAS_CONTEXT: 'webgl', //'experimental-webgl',
+  WEBGL_CANVAS_CONTEXT: 'webgl', // 'experimental-webgl',
   MOUSEBUTTON_LEFT_CLICK: 0,
   MOUSEBUTTON_RIGHT_CLICK: 2,
   MOUSTBUTTON_MOUSEWHEEL_CLICK: 1,
+  GLOBAL_MIN_AMBIENT_LIGHT: 0.01,
+  GLOBAL_MAX_AMBIENT_LIGHT: 0.99,
 
   // Default key bindings:
   ASCII_W: 87,
@@ -28,6 +30,8 @@ const config = {
   ASCII_SPACE: 32,
   ASCII_LSHIFT: 16,
   ASCII_ESCAPE: 27,
+  ASCII_EQUALS: 61,
+  ASCII_MINUS: 173, // ASCII Chart says this is 45, on my keyboard it's 173
 
   // Camera Actions:
 
@@ -49,6 +53,8 @@ const config = {
   TESTACTION1: 'TESTACTION1',
   TESTACTION2: 'TESTACTION2',
   TESTACTION3: 'TESTACTION3',
+  INCREMENT_VALUE: "INCREMENT_VALUE",
+  DECREMENT_VALUE: "DECREMENT_VALUE",
 
   // Engine Actions:
   EXIT: 'EXIT',

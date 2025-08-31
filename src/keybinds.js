@@ -21,6 +21,8 @@ let keybinds = [
   { name: constants.config.TESTACTION1, key: constants.config.ASCII_K, type: constants.config.GENERAL_KEYBINDING  },
   { name: constants.config.TESTACTION2, key: constants.config.ASCII_M, type: constants.config.GENERAL_KEYBINDING  },
   { name: constants.config.TESTACTION3, key: constants.config.ASCII_J, type: constants.config.GENERAL_KEYBINDING  },
+  { name: constants.config.INCREMENT_VALUE, key: constants.config.ASCII_EQUALS, type: constants.config.GENERAL_KEYBINDING  },
+  { name: constants.config.DECREMENT_VALUE, key: constants.config.ASCII_MINUS, type: constants.config.GENERAL_KEYBINDING  },
   { name: constants.config.EXIT, key: constants.config.ASCII_ESCAPE, type: constants.config.ENGINE_KEYBINDS  }
 ];
 
