@@ -19,6 +19,17 @@ export function initShaders(gl) {
   const shaderProgram = gl.createProgram();
   gl.attachShader(shaderProgram, vertexShader);
   gl.attachShader(shaderProgram, fragmentShader);
+  /* As of September 2025 I started getting this warning in firefox:
+      "WebGL warning: drawElementsInstanced: Drawing without vertex attrib 0 array enabled forces the browser to
+      do expensive emulation work when running on desktop OpenGL platforms, for example on Mac. It is preferable
+      to always draw with vertex attrib 0 array enabled, by using bindAttribLocation to bind some always-used
+      attribute to location 0."
+  * To solve this, it was recommended to use something common from the vertex shader (like position)
+  * and set it to index 0 of the attribLocation. I am not an expert on how this works. I am guessing that
+  * sometimes it was getting assigned index 0 and sometimes not, but by specifying index 0 below we can
+  * guarantee get the performance improvement by putting it in index 0.
+  */
+  gl.bindAttribLocation(shaderProgram, 0, 'aVertexPosition');
   gl.linkProgram(shaderProgram);
   gl.validateProgram(shaderProgram);
 
@@ -39,7 +50,7 @@ export function initShaders(gl) {
   gl.useProgram(shaderProgram);
 
   const vertexPositionAttribute = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
-  gl.enableVertexAttribArray(vertexPositionAttribute);
+  gl.enableVertexAttribArray(vertexPositionAttribute); // With the code above, this should be index 0
 
   const textureCoordAttribute = gl.getAttribLocation(shaderProgram, 'aTextureCoord');
   gl.enableVertexAttribArray(textureCoordAttribute);
