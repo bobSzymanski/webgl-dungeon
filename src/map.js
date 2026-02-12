@@ -163,7 +163,6 @@ async function spawnMonsterGroups(gl) {
   }
 }
 
-
 // models is used for world geometry & objects
 export function getModels() {
   return models;
@@ -175,8 +174,10 @@ export async function loadTextures(gl) {
   }
 }
 
-// If we break this down to its own function, we can return much more quickly
-// when there are obstacles in our path
+// Sept 2025: I hate this code - we can do collision more intelligently
+// maybe something like BSP trees for map geometry and then bounding boxes for models
+// I don't imagine we will have a large number of models (like < 100) per map at a time
+// we are instantiating so many variables in the function call and this is called every frame
 function canMoveXDirection(position, desiredXMovement) {
   if (desiredXMovement == 0) { return false; } // If not moving at all, don't do anything here.
   const coordX = Math.floor(position[0]);

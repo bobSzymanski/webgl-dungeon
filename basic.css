@@ -41,13 +41,13 @@ body {
 }
 
 #monsterarea {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.8);
   text-align: center;
   height: 100%;
 }
 
 #battleactionsarea {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.8);
   text-align: center;
   height: 100%;
 }
